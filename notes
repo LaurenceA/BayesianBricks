@@ -1,0 +1,35 @@
+lapses:
+  slow, multiplicative drift
+
+noisy accumulator:
+  convolution for speed
+
+diffusion to bound (explicit):
+  discretise time
+  binary variables (stop/don't stop) for each time-point
+    these binary variables are observed (give the reaction time)
+    use a fairly sharp sigmoid for the top and bottom
+    initialize as a straight line from start point to decision
+
+diffusion to bound (integrated):
+
+kalman filter:
+  
+
+discrete confidence (e.g. 1-6)
+  parameterise thresholds as:
+    discrete distribution over 1-6 (but not equal to the marginal dist. over confidences)
+    assume a distriubtion (e.g. Gaussian) over confidences (not equal to the marginal dist)
+    back solve for the thresholds 
+
+
+
+Data:
+  Noisy accumulator:
+    Valentin Wyart/Alex Pouget
+  Diffusion to bound:
+    Roozbeh? Angela Yu?
+  Kalman Filter:
+    Angela Yu?  
+  Confidence:
+    Bahador?
