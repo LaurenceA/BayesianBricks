@@ -1,0 +1,141 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2018
+
+% ready for submission
+% \usepackage{neurips_2018}
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2018}
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+     \usepackage[final]{neurips_2018}
+
+% to avoid loading the natbib package, add option nonatbib:
+%     \usepackage[nonatbib]{neurips_2018}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+
+\usepackage{amsmath}
+
+\title{Efficient, flexible and accurate Bayesian inference for behavioural experiments in neuroscience}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+\author{%
+  Laurence Aitchison\thanks{University of Cambridge}\\
+  Janelia Research Campus,\\
+  19700 Helix Drive,\\
+  Ashburn, VA 20147 \\
+  \texttt{laurence.aitchison@gmail.com}
+  % examples of more authors
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \AND
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+\end{abstract}
+
+\section{Introduction}
+In a behavioural experiment, we present subjects ranging from mice to humans with a sensory stimulus and record their responses.
+Behavioural experiments are ubiquitous in neuroscience, as they are easy and cheap (at least when compared to recording neural responses), but at the same time can provide valuable insights into underlying neural mechanisms.
+Furthermore, behavioural experiments provide the basis for almost all experimental techniques that  neuroscience: the typical approach is to perform a behavioural experiment, and in addition use invasive techniques to measure neural activity.
+In this fashion, we are able to find neural correlates of the mechanisms suggested by modelling the behaviour.
+
+While behavioural experiments are often superficially simple, they have four features that make data analysis extremely challenging.
+First, the mapping from the neural mechanism of interest to observed behavioural responses is highly indirect, and includes unknown latent variables describing the animal's noisy observations and internal state.
+Second, there is typically enough data to make analysis computationally challenging, but not enough to make modelling of uncertainty unnecessary.
+Third, we are often interested in model-selection, which requires us to perform high-dimensional integrals and is widely understood to be the hardest problem in Bayesian data-analysis.
+Fourth, as we are interested in drawing scientific conclusions from our analyses, we need accurate uncertainty in our parameter estimates, which prevents us from using large classes of approximate but highly-effective inference approaches including VAE's.
+
+Behavioural neuroscientists have shown remarkable pluck in the face of these issues by writing sophisticated special-purpose analysis code for each model of each experiment.
+However, writing such code is extremely time-consuming and as such prevents researchers from meaningfully exploring the relevant space of models.
+
+Moreover, researchers use a panoply of methods for inference and model selection, most of which are suboptimal.
+For instance, inference is often performed using maximum likelihood, which fails to take account of uncertainty, or hand-written MCMC algorithms which are extremely slow.
+Further, model selection is typically so difficult that researchers either solve a different problem, or are forced to use strong approximations.
+Indeed, it is possible to take an approach inspired by cross validation, but this does not compute the required quantity, and requires inference to be performed multiple times.
+However, this requires you to run inference a large number of times.
+Alternatively, approaches such as the BIC are used, which involve optimizing the parameters, and then subtracting that depends on the number of parameters.
+This approach is popular due to its simplicity, but requires it is unclear that the conditions required for its application hold in typical behavioural experiments.
+
+Here we provide a single method for performing inference and model selection in almost all practically relevant models of behaviour based on Hamiltonian Monte Carlo (HMC).
+We build on PyTorch and Pyro to give highly flexible GPU computation, with flexible front-end, allowing researchers to rapidly explore a wide range of models.
+Finally, we provide a series of primitives relevant to behavioural experiments including efficient implementations of noisy accumulators, Kalman filters and confidence responses.
+We analyse a series of past datasets, showing that our approaches give improved uncertainty estimates in less time than past approaches.
+
+\section{Results}
+
+The key observation underlying our approach is that while the observations in neuroscience experiments are often discrete, the latent variables and parameters over which we perform inference are almost always continuous.
+This raises the possibility of using gold-standard inference methods such as HMC, which are known to perform accurate Bayesian inference rapidly.
+While highly desirable, applying HMC to modeling of behavioural data remains non-trivial.
+This is in part because HMC requires gradients, which have been difficult and time-consuming to compute, at least until the advent of modern deep-learning libraries incorporating automatic differentiation.
+However, HMC cannot directly be applied to several models of particular interest in behavioural neuroscience, including diffusion-to-bound and models of confidence. 
+
+\section{Noisy accumulators}
+
+A noisy accumulator is defined by 
+\begin{align}
+  1
+\end{align}
+However, such a recurrent structure is poorly optimized on modern GPU's.
+As such, wherever possible, we should use an equivalent model, defined by a convolution,
+\begin{align}
+  1
+\end{align}
+While this model might seem extremely simple, it had considerable relevance in ...
+
+\section{Diffusion to bound}
+
+Diffusion to bound is ...
+This model is has been extremely successful in modelling behavioural experiments as it is capable of not only predicting the 
+
+\subsection{Confidence}
+
+
+
+\subsection{Soft and hard model selection in nested models}
+
+\section*{References}
+
+
+\end{document}
