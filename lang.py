@@ -1,17 +1,22 @@
 #TODOs:
-# separate mcmc_steps and integration_steps
-# mass matrix (flexible adaptation based on squared-gradients)
+# mass matrix adaptation
+# KE = p^T M^{-1} p
+# \dot{x} = M^{-1} p
+# sample p using covariance M
+# M = E[g^2]
+
 # effective-sample-size
 # chat to Yul
 # sample from the model
-# optimize dictionary passes
 # define Chain class
 
 # to think about
 # convenient sampling from the generative model
 
 import torch as t
+import math
 from torch.distributions import Normal
+from timeit import default_timer as timer
 
 t.set_default_tensor_type(t.FloatTensor)
 
@@ -65,45 +70,41 @@ class JointDistribution():
 class SimpleJD(JointDistribution):
     def forward(self, tr):
         tr.sample("x", Normal(0., 1.))
-        tr.obs(4., Normal(tr["x"], 0.1))
+        tr.obs(4., Normal(tr["x"], 0.01))
+        tr.sample("y", Normal(0., 1.))
+        tr.obs(4., Normal(tr["y"], 1.))
         #Note: nothing is returned!
 
 
 
 
 class HMC():
-    def __init__(self, dist, rate, warmup, steps):
+    def __init__(self, dist, rate, warmup, steps, trajectory_length):
         self.dist = dist
         self.rate = rate
         self.warmup = warmup
         self.steps = steps
+        self.trajectory_length = trajectory_length
 
+
+        
         self.x = dist.sample()
         self.results = dict_cpu_expand(steps, self.x)
+        self.mass = dict_ones(self.x)
+        self.mass_lambda = 0.1
 
-    def log_prob(self, xs, ps):
-        lp_x = self.dist.log_prob(xs)
-        lp_p = dict_sum(lambda p: t.sum(-p*p/2), ps)
-        return lp_x + lp_p
-
-    def step(self):
+    def step(self, adaptation=False):
         x_init = self.x
-        p_init = dict_randn(x_init)
 
         # Proposal
-        x_prop, p_prop = LeapfrogIntegrator(self.dist, self.rate, self.steps, x_init, p_init).integrate()
+        x_prop, accept_prob = LeapfrogIntegrator(self.dist, self.rate, self.trajectory_length, self.mass_lambda, self.mass, x_init).integrate(adaptation=adaptation)
 
-        # Accept/reject
-        lp_init = self.log_prob(x_init, p_init)
-        lp_prop = self.log_prob(x_prop, p_prop)
-
-        accept_prob = t.exp(lp_prop-lp_init).item()
         if t.rand(()).item() < accept_prob:
             self.x = x_prop
 
     def run(self):
         for _ in range(self.warmup):
-            self.step()
+            self.step(adaptation=True)
 
         for i in range(self.steps):
             self.step()
@@ -114,38 +115,94 @@ class HMC():
 
 
 class LeapfrogIntegrator():
-    def __init__(self, dist, rate, steps, x_init, p_init):
+    def __init__(self, dist, rate, trajectory_length, mass_lambda, mass, x_init):
         self.dist = dist
         self.rate = rate
-        self.steps = steps
+        self.steps = int(trajectory_length // rate)
+        self.mass_lambda = mass_lambda
         #Position
-        self.x = dict_clone_required_grad(x_init)
+        self.x  = dict_clone_required_grad(x_init)
         #Momentum
-        self.p = dict_clone(p_init)
+        self.p  = dict_randn(x_init)
+        #Squared gradient (for adaptation)
+        self.g2 = dict_zeros(x_init)
+        self.g = dict_zeros(x_init)
 
-    def grad(self):
-        dict_zero_grad(self.x)
+        #Convert position and momentum to lists for efficient iteration
+        self.list_x = dict_flatten(self.x)
+        self.list_p = dict_flatten(self.p)
+        self.list_g2 = dict_flatten(self.g2)
+        self.list_g = dict_flatten(self.g)
+        self.list_mass = dict_flatten(mass)
+
+        #Shape momentum initialization using mass matrix
+        for i in range(len(self.list_p)):
+            self.list_p[i].mul_(t.sqrt(self.list_mass[i]))
+
+    def backward(self):
+        # Zeros out past gradients
+        for x in self.list_x:
+            if x.grad is not None:
+                x.grad.fill_(0.)
+
+        # Computes new gradients
         lp = self.dist.log_prob(self.x)
         lp.backward()
-        return dict_grad(self.x)
+
+        # Record moments of the gradient
+        for i in range(len(self.list_x)):
+            grad = self.list_x[i].grad
+            self.list_g2[i].addcmul_(1/self.steps, grad, grad)
+            self.list_g[i].add_(1/self.steps, grad)
+
+        # Return log-probability (which is occasionally useful)
+        return lp
 
     def position_step(self):
-        dict_add_(self.rate, self.x, self.p)
+        for i in range(len(self.list_x)):
+            #self.list_x[i].data.add_(self.rate, self.list_p[i])
+            self.list_x[i].data.addcdiv_(self.rate, self.list_p[i], self.list_mass[i])
 
     def momentum_step(self):
-        dict_add_(self.rate, self.p, self.grad())
+        self.backward()
+        for i in range(len(self.list_x)):
+            self.list_p[i].add_(self.rate, self.list_x[i].grad)
 
     def momentum_half_step(self):
-        dict_add_(self.rate/2, self.p, self.grad())
+        lp = self.backward()
+        for i in range(len(self.list_x)):
+            self.list_p[i].add_(self.rate/2, self.list_x[i].grad)
+        return lp
 
-    def integrate(self):
-        self.momentum_half_step()
+    def integrate(self, adaptation=False):
+        # Compute initial log-probability (including initial half momemtum step)
+        lp_p = 0.
+        for i in range(len(self.list_p)):
+            lp_p += -t.sum(self.list_p[i]**2/self.list_mass[i])/2
+        lp_x = self.momentum_half_step()
+        lp_init = lp_x + lp_p
+
+        # Integration
         for _ in range(self.steps-1):
             self.position_step()
             self.momentum_step()
         self.position_step()
-        self.momentum_half_step()
-        return self.x, self.p
+
+        # Compute final log-probability (including final half momemtum step)
+        lp_x = self.momentum_half_step()
+        lp_p = 0.
+        for i in range(len(self.list_p)):
+            lp_p += -t.sum(self.list_p[i]**2/self.list_mass[i])/2
+        lp_prop = lp_x + lp_p
+
+        acceptance_prob = (lp_prop - lp_init).exp()
+
+        # adaptation
+        if adaptation:
+            for i in range(len(self.list_mass)):
+                self.list_mass[i].mul_(1-self.mass_lambda).add_(self.mass_lambda, self.list_g2[i] - self.list_g[i]**2)
+
+        return self.x, acceptance_prob
 
 
 
@@ -198,6 +255,16 @@ def randn(x):
 def dict_randn(d):
     return dict_recurse_one(randn, d)
 
+def zeros(x):
+    return t.zeros(x.shape)
+def dict_zeros(d):
+    return dict_recurse_one(zeros, d)
+
+def ones(x):
+    return t.ones(x.shape)
+def dict_ones(d):
+    return dict_recurse_one(ones, d)
+
 def clone(x):
     return x.clone()
 def dict_clone(d):
@@ -208,10 +275,10 @@ def clone_required_grad(x):
 def dict_clone_required_grad(d): 
     return dict_recurse_one(clone_required_grad, d)
 
-def grad(x):
+def grad_(x):
     return x.grad
 def dict_grad(d):
-    return dict_recurse_one(grad, d)
+    return dict_recurse_one(grad_, d)
 
 def dict_cpu_expand(N, d):
     fn = lambda x: t.zeros((N, *x.shape), device="cpu")
@@ -219,19 +286,30 @@ def dict_cpu_expand(N, d):
 
 #### Flatten
 
+#def dict_iter(d):
+#    for k, v in d.items():
+#        if isinstance(v, dict):
+#            for sub_v in dict_iter(v):
+#                yield(sub_v)
+#        else:
+#            yield(v)
+#
+#def dicts_iter(d1, d2):
+#    for k, v in d.items():
+#        if isinstance(v, dict):
+#            for sub_v in dict_iter(v):
+#                yield(sub_v)
+#        else:
+#            yield(v)
+
 def dict_flatten(d):
     result = []
     for k, v in d.items():
         if isinstance(v, dict):
             result += dict_flatten(d)
-        else
+        else:
             result.append(v)
     return result
-
-def zero_grad(xs):
-    for x in xs:
-        if x.grad is not None:
-            x.grad.fill_(0.)
 
 def add_(mult, xs, ys):
     for i in range(len(xs)):
@@ -240,16 +318,6 @@ def add_(mult, xs, ys):
         x.data.add_(mult, y)
            
 #### In-place ops
-
-#def zero_grad(x):
-#    if x.grad:
-#        x.grad.fill_(0.)
-#def dict_zero_grad(input_dict):
-#    dict_inplace_recurse(zero_grad, input_dict)
-#
-#def dict_add_(mult, xs, ys):
-#    fn = lambda x, y: x.data.add_(mult, y)
-#    return dict_inplace_recurse(fn, xs, ys)
 
 def dict_update(i, xs, ys):
     def update(x, y):
@@ -261,5 +329,8 @@ jd = SimpleJD()
 tr = jd.sample()
 lp = jd.log_prob(tr)
 
-hmc = HMC(jd, 1E-2, 100, 200)
+start = timer()
+hmc = HMC(jd, 1E-2, 100, 100, 2*math.pi)
 hmc.run()
+end = timer()
+print(end-start)
