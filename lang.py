@@ -1,17 +1,37 @@
 #TODOs:
-# mass matrix adaptation
-# KE = p^T M^{-1} p
-# \dot{x} = M^{-1} p
-# sample p using covariance M
-# M = E[g^2]
+# HMC:
+#  Abstract out mass-matrix adaptation
+#  Allow for per-time-step adaptation
+# Other:
+#  sample from the model
+#  define Chain class
+# Modules:
+#  code up single-variable
 
-# effective-sample-size
-# chat to Yul
-# sample from the model
-# define Chain class
+# Adaptation: separate out likelihood and prior
+# All latents sampled IID from Gaussians, then transformed to the required distributions
+# Don't explicitly compute prior log_prob gradients.
+# Mass matrix is always at least identity.
 
-# to think about
-# convenient sampling from the generative model
+# Initialize dictionary of Gaussian IID variables.
+# Several possible set-ups:
+#   Option 1: (simple initial implementation)
+#     Function mapping Gaussian IID latents onto log_prob.
+#   Option 2: (sample from generative)
+#     Function mapping Gaussian IID latents onto observation distributions
+#   Option 3: (sample from generative, and record moments of latents)
+#     Function mapping Gaussian IID latents onto "real" latents
+#     Function mapping "real" latents onto observation distributions
+# 
+# Adaptation == black-box VI with a factorised prior
+
+# Objects:
+#   sizes       (dict mapping parameter names to t.Size)
+#   state       (dict mapping parameter names to Tensor)
+#   approx_post (dict mapping parameter names to ParamNormal)
+# Begin with:
+#   Dict mapping parameter names to t.Size (names)
+#   function (
 
 import torch as t
 import math
@@ -105,6 +125,7 @@ class HMC():
     def run(self):
         for _ in range(self.warmup):
             self.step(adaptation=True)
+            print(hmc.mass)
 
         for i in range(self.steps):
             self.step()
@@ -124,15 +145,23 @@ class LeapfrogIntegrator():
         self.x  = dict_clone_required_grad(x_init)
         #Momentum
         self.p  = dict_randn(x_init)
-        #Squared gradient (for adaptation)
-        self.g2 = dict_zeros(x_init)
-        self.g = dict_zeros(x_init)
 
-        #Convert position and momentum to lists for efficient iteration
+        #Moments for adaptation
+        self.xb = dict_zeros(x_init)
+        self.gb = dict_zeros(x_init)
+        self.xg = dict_zeros(x_init)
+        self.x2 = dict_zeros(x_init)
+
+        #Convert everything to lists for efficient iteration
         self.list_x = dict_flatten(self.x)
         self.list_p = dict_flatten(self.p)
-        self.list_g2 = dict_flatten(self.g2)
-        self.list_g = dict_flatten(self.g)
+
+        self.adapt_iters = 0
+        self.list_xb = dict_flatten(self.xb)
+        self.list_gb = dict_flatten(self.gb)
+        self.list_x2 = dict_flatten(self.x2)
+        self.list_xg = dict_flatten(self.xg)
+
         self.list_mass = dict_flatten(mass)
 
         #Shape momentum initialization using mass matrix
@@ -150,10 +179,15 @@ class LeapfrogIntegrator():
         lp.backward()
 
         # Record moments of the gradient
+        self.adapt_iters += 1
         for i in range(len(self.list_x)):
-            grad = self.list_x[i].grad
-            self.list_g2[i].addcmul_(1/self.steps, grad, grad)
-            self.list_g[i].add_(1/self.steps, grad)
+            x = self.list_x[i].data
+            g = self.list_x[i].grad
+
+            self.list_xb[i].add_(x)
+            self.list_gb[i].add_(g)
+            self.list_x2[i].addcmul_(1., x, x)
+            self.list_xg[i].addcmul_(1., g, x)
 
         # Return log-probability (which is occasionally useful)
         return lp
@@ -200,7 +234,22 @@ class LeapfrogIntegrator():
         # adaptation
         if adaptation:
             for i in range(len(self.list_mass)):
-                self.list_mass[i].mul_(1-self.mass_lambda).add_(self.mass_lambda, self.list_g2[i] - self.list_g[i]**2)
+                xb = self.list_xb[i]
+                gb = self.list_gb[i]
+
+                x2 = self.list_x2[i]
+                xg = self.list_xg[i]
+
+                xb.div_(self.adapt_iters)
+                gb.div_(self.adapt_iters)
+                x2.div_(self.adapt_iters)
+                xg.div_(self.adapt_iters)
+
+                x2.addcmul_(-1., xb, xb)
+                x2.abs_().add_(1E-5)
+                xg.addcmul_(-1., xb, gb)
+
+                self.list_mass[i].mul_(1-self.mass_lambda).addcdiv_(-self.mass_lambda, xg, x2)#self.list_g2[i] - self.list_g[i]**2)
 
         return self.x, acceptance_prob
 
@@ -330,7 +379,7 @@ tr = jd.sample()
 lp = jd.log_prob(tr)
 
 start = timer()
-hmc = HMC(jd, 1E-2, 100, 100, 2*math.pi)
+hmc = HMC(jd, 0.01, 100, 100, 1.)
 hmc.run()
 end = timer()
 print(end-start)
