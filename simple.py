@@ -12,6 +12,8 @@
 
 # TODO
 #   output distribution (#2)
+#     fn : IID Gaussian noise -> observation distribution
+#     class conditioned distributoin
 #   nesting
 #   confidence example
 #   noisy integration example
@@ -24,6 +26,8 @@ import torch.nn.functional as F
 import torch.optim
 from torch.distributions import Normal
 from collections import OrderedDict
+
+
 
 def fill(val, size_dict):
     result_dict = {}
@@ -229,6 +233,22 @@ class HMC():
         for i in range(self.chain_length):
             self.step(i)
 
+class LP():
+    """
+    fields:
+    fn
+    obs
+
+    fn takes IID random noise and returns the distribution under which obs is presumed to have been drawn
+
+    importantly, an instance of LP looks like a function that takes iid random Gaussian noise (z), and returns a log-probability.
+    """
+    def __init__(self, fn, obs):
+        self.fn = fn
+        self.obs = obs
+
+    def __call__(self, z):
+        return self.fn(z).log_prob(self.obs).sum()
 
 
 sd = {
@@ -238,8 +258,19 @@ sd = {
 
 sample_dict = randn(sd)
 
-def lp(d):
-    return Normal(0, 1).log_prob(d["a"]).sum() + Normal(0, 0.01).log_prob(d["b"]).sum()
+
+
+#def lp(d):
+#    return Normal(0, 1).log_prob(d["a"]).sum() + Normal(0, 0.01).log_prob(d["b"]).sum()
+
+def fn(d):
+    #mean = t.Tensor([d["a"], d["b"]])
+    mean = torch.stack([d["a"], d["b"]])
+    scale = t.Tensor([1., 0.01])
+    return Normal(mean, scale)
+
+lp = LP(fn, t.zeros(2))
+
 
 vi = VI(lp, sd)#, batch_size=t.Size([20]))
 vi.fit(10**4)
