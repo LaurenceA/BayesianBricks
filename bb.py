@@ -264,7 +264,6 @@ sample_dict = randn(sd)
 #    return Normal(0, 1).log_prob(d["a"]).sum() + Normal(0, 0.01).log_prob(d["b"]).sum()
 
 def fn(d):
-    #mean = t.Tensor([d["a"], d["b"]])
     mean = torch.stack([d["a"], d["b"]])
     scale = t.Tensor([1., 0.01])
     return Normal(mean, scale)
