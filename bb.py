@@ -12,10 +12,10 @@ class RV(nn.Module):
         self.x = t.randn(size)
 
     def randn(self):
-        self.x = randn(self.size)
+        self.x = t.randn(self.size)
 
     def __call__(self):
-        return self.value
+        return self.x
 
     #### VI
 
@@ -92,7 +92,7 @@ class RV(nn.Module):
         self.hmc_p.mul_(self.hmc_sqrt_mass)
 
 
-class RVs(nn.Module):
+class Model(nn.Module):
     """
     Overload: 
     __init__ 
@@ -150,22 +150,6 @@ class RVs(nn.Module):
             total += v.hmc_log_prior_xp()
         return total
 
-class Normal(RV):
-    def __call__(self, loc, scale):
-        return loc + scale*self.x
-
-class Model(RVs):
-    def __init__(self):
-        super().__init__()
-        self.a = Normal(())
-        self.b = Normal(())
-
-    def __call__(self):
-        a = self.a(0., 1.)
-        b = self.b(0., 1.)
-        mean = t.stack([a, b])
-        scale = t.Tensor([1., 0.01])
-        return t.distributions.Normal(mean, scale).log_prob(t.zeros(2)).sum()
 
 
 class VI():
@@ -246,18 +230,37 @@ class HMC():
             self.step(i)
 
 
-m = Model()
-m()
+#### Testing!
 
-m.vi_init()
-m.vi_rsample_kl()
-
-vi = VI(m)
-vi.fit(3*10**4)
-
-hmc = HMC(m, 500)
-
-hmc.run()
-
-print(m.a.hmc_samples.var())
-print(m.b.hmc_samples.var())
+#class Normal(RV):
+#    def __call__(self, loc, scale):
+#        return loc + scale*self.x
+#
+#class Test(Model):
+#    def __init__(self):
+#        super().__init__()
+#        self.a = Normal(())
+#        self.b = Normal(())
+#
+#    def __call__(self):
+#        a = self.a(0., 1.)
+#        b = self.b(0., 1.)
+#        mean = t.stack([a, b])
+#        scale = t.Tensor([1., 0.01])
+#        return t.distributions.Normal(mean, scale).log_prob(t.zeros(2)).sum()
+#
+#m = Test()
+#m()
+#
+#m.vi_init()
+#m.vi_rsample_kl()
+#
+#vi = VI(m)
+#vi.fit(3*10**4)
+#
+#hmc = HMC(m, 500)
+#
+#hmc.run()
+#
+#print(m.a.hmc_samples.var())
+#print(m.b.hmc_samples.var())

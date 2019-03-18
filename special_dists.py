@@ -31,6 +31,9 @@ def causal_conv(x, filt):
     assert x.size(1) == filt.size(0)
     return F.conv1d(x, filt, groups=x.size(1))[..., :-1].view(x_size)
 
+def exponential_causal_conv(x, tau):
+    filt = t.exp(dt / tau * t.arange(-(z.size(-1)-1), 1.))
+
 #def exponential_filter(
 
 
@@ -60,6 +63,3 @@ def lds(z, init_z, taus, noise_matrix):
      Latents undergo exponential decay (rotation?)
      Noise and inputs are projected arbitrarily onto latents.
     """
-    
-
-
