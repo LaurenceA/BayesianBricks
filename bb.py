@@ -294,7 +294,7 @@ sd = {
     "b" : t.Size([])
 }
 
-sample_dict = randn(sd)
+#sample_dict = randn(sd)
 
 
 
