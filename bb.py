@@ -10,6 +10,20 @@ from vi import VI
 from hmc import HMC
 
 
+
+class LDS():
+    def __init__(self, channels, T):
+
+
+def lds(z, init_z, taus, noise_matrix):
+    """
+    z, inp [..., channels, time]
+    Arbitrary (inc. non-normal) dynamical systems:
+     Latents undergo exponential decay (rotation?)
+     Noise and inputs are projected arbitrarily onto latents.
+    """
+
+
 class LP():
     """
     fields:
