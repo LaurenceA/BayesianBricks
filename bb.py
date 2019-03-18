@@ -27,26 +27,11 @@ import torch.optim
 from torch.distributions import Normal
 from collections import OrderedDict
 
-
-
-def fill(val, size_dict):
-    result_dict = {}
-    for key, size in size_dict.items():
-        sample_dict[k] = t.Tensor(size).fill_(val)
-    return result_dict
-
 def randn(size_dict):
     result_dict = {}
     for key, size in size_dict.items():
         result_dict[key] = t.randn(size)
     return result_dict
-
-def prior_log_prob(sample_dict):
-    N = Normal(0., 1.)
-    total = 0.
-    for k, v in size_dict.items():
-        total += N.log_prob(v)
-    return total
 
 class VITensor(nn.Module):
     def __init__(self, size, batch_size=t.Size([])):
