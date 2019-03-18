@@ -1,24 +1,3 @@
-# Initialize dictionary of Gaussian IID variables.
-# Several possible set-ups:
-#   Option 1: (simple initial implementation)
-#     Function mapping Gaussian IID latents onto log_prob.
-#   Option 2: (sample from generative)
-#     Function mapping Gaussian IID latents onto observation distributions
-#   Option 3: (sample from generative, and record moments of latents)
-#     Function mapping Gaussian IID latents onto "real" latents
-#     Function mapping "real" latents onto observation distributions
-# 
-# Adaptation == black-box VI with a factorised prior
-
-# TODO
-#   output distribution (#2)
-#     fn : IID Gaussian noise -> observation distribution
-#     class conditioned distributoin
-#   nesting
-#   confidence example
-#   noisy integration example
-
-
 import math
 import torch as t
 import torch.nn as nn
@@ -26,12 +5,6 @@ import torch.nn.functional as F
 import torch.optim
 from torch.distributions import Normal
 from collections import OrderedDict
-
-def randn(size_dict):
-    result_dict = {}
-    for key, size in size_dict.items():
-        result_dict[key] = t.randn(size)
-    return result_dict
 
 class VITensor(nn.Module):
     def __init__(self, size, batch_size=t.Size([])):
@@ -294,12 +267,6 @@ sd = {
     "b" : t.Size([])
 }
 
-#sample_dict = randn(sd)
-
-
-
-#def lp(d):
-#    return Normal(0, 1).log_prob(d["a"]).sum() + Normal(0, 0.01).log_prob(d["b"]).sum()
 
 def fn(d):
     mean = torch.stack([d["a"], d["b"]])
