@@ -53,12 +53,13 @@ def drift_diffusion(z, tau, inp=0., dt=1., init=0.):
     return 
 
 
-def lds(z, inp, init, tau, noise_matrix, input_matrix):
+def lds(z, init_z, taus, noise_matrix):
     """
     z, inp [..., channels, time]
     Arbitrary (inc. non-normal) dynamical systems:
      Latents undergo exponential decay (rotation?)
      Noise and inputs are projected arbitrarily onto latents.
     """
+    
 
 

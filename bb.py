@@ -52,8 +52,6 @@ class VITensor(nn.Module):
     def __init__(self, size, batch_size=t.Size([])):
         super().__init__()
         self.size = size
-        self.batch_size = batch_size
-        self.full_size = batch_size + size
         self.mean = nn.Parameter(t.randn(size))
         self.log_prec = nn.Parameter(t.Tensor(size).fill_(8.))
 
@@ -73,26 +71,32 @@ class VITensor(nn.Module):
         z = t.randn(batch_size + self.size)
         return (self.mean + self.std() * z).detach()
 
-    def rsample_kl(self):
-        z = t.randn(self.full_size)
+    def rsample_kl(self, batch_size=t.Size([])):
+        z = t.randn(batch_size + self.size)
         log_var = self.log_variance()
+
         scale = (0.5*log_var).exp()
         x = self.mean + scale * z
 
         logp = - 0.5 * (x**2).sum()
         logq = - 0.5 * (z**2 + log_var).sum()
         return x, logq - logp
-        
 
-class VI(nn.Module):
-    def __init__(self, fn, size_dict, batch_size=t.Size([]), opt=torch.optim.Adam, opt_kwargs={}):
-        self.fn = fn
+class VIDict(nn.Module):
+    def __init__(self, sizes):
+        assert isinstance(sizes, dict)
 
         super().__init__()
-        for key, size in size_dict.items():
-            setattr(self, key, VITensor(size, batch_size=batch_size))
-
-        self.opt = opt(self.parameters(), **opt_kwargs)
+        for key, val in sizes.items():
+            if isinstance(val, dict):
+                setattr(self, key, VIDict(val))
+            else:
+                setattr(self, key, VITensor(val))
+                
+    def sample(self, batch_size=t.Size([])):
+        result_dict = {}
+        for key, val in self._modules:
+            result_dict[key] = val.sample(batch_size=batch_size)
 
     def rsample_kl(self):
         result_dict = {}
@@ -101,10 +105,18 @@ class VI(nn.Module):
             result_dict[k], kl = v.rsample_kl()
             total_kl += kl
         return result_dict, total_kl
+        
+
+class VI():
+    def __init__(self, fn, size_dict, batch_size=t.Size([]), opt=torch.optim.Adam, opt_kwargs={}):
+        super().__init__()
+        self.fn = fn
+        self.tensors = VIDict(size_dict)
+        self.opt = opt(self.tensors.parameters(), **opt_kwargs)
 
     def fit_one_step(self):
-        self.zero_grad()
-        rsample, kl = self.rsample_kl()
+        self.tensors.zero_grad()
+        rsample, kl = self.tensors.rsample_kl()
         elbo = self.fn(rsample) - kl
         loss = -elbo
         loss.backward()
@@ -132,7 +144,7 @@ class HMCTensor():
 
         #state of leapfrog integrator
         self.x = self.x_mcmc.clone().requires_grad_()
-        self.p = t.zeros(vit.full_size)
+        self.p = t.zeros(vit.size)
 
         assert not self.x_mcmc.requires_grad
         assert     self.x.requires_grad
@@ -167,7 +179,7 @@ class HMC():
         self.chain_length = chain_length
         self.warmup = warmup
 
-        for k, v in vi._modules.items():
+        for k, v in vi.tensors._modules.items():
             self.hmcts[k] = HMCTensor(v, self.chain_length)
 
     def __getitem__(self, key):
