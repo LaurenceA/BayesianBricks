@@ -3,9 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class VITensor(nn.Module):
-    def __init__(self, size, batch_size=t.Size([])):
+    def __init__(self, mtensor, batch_size=t.Size([])):
         super().__init__()
-        self.size = size
+        self.mtensor=mtensor
+        self.size = mtensor.size
         self.mean = nn.Parameter(t.randn(size))
         self.log_prec = nn.Parameter(t.Tensor(size).fill_(8.))
 
@@ -21,10 +22,6 @@ class VITensor(nn.Module):
     def inv_std(self):
         return (-0.5*self.log_variance()).exp()
 
-    def sample(self, batch_size=t.Size([])):
-        z = t.randn(batch_size + self.size)
-        return (self.mean + self.std() * z).detach()
-
     def rsample_kl(self, batch_size=t.Size([])):
         z = t.randn(batch_size + self.size)
         log_var = self.log_variance()
@@ -37,21 +34,18 @@ class VITensor(nn.Module):
         return x, logq - logp
 
 class VIDict(nn.Module):
-    def __init__(self, sizes):
+    def __init__(self, mdict):
         assert isinstance(sizes, dict)
 
         super().__init__()
-        for key, val in sizes.items():
+        for key, val in mdict.tensors.items():
             if isinstance(val, dict):
                 setattr(self, key, VIDict(val))
             else:
                 setattr(self, key, VITensor(val))
-                
-    def sample(self, batch_size=t.Size([])):
-        result_dict = {}
-        for key, val in self._modules:
-            result_dict[key] = val.sample(batch_size=batch_size)
 
+    def rsample(self):
+                
     def rsample_kl(self):
         result_dict = {}
         total_kl = 0.
@@ -62,10 +56,9 @@ class VIDict(nn.Module):
         
 
 class VI():
-    def __init__(self, fn, size_dict, batch_size=t.Size([]), opt=t.optim.Adam, opt_kwargs={}):
+    def __init__(self, model, batch_size=t.Size([]), opt=t.optim.Adam, opt_kwargs={}):
         super().__init__()
-        self.fn = fn
-        self.tensors = VIDict(size_dict)
+        self.tensors = VIDict(model)
         self.opt = opt(self.tensors.parameters(), **opt_kwargs)
 
     def fit_one_step(self):
