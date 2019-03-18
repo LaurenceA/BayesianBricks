@@ -83,4 +83,31 @@ assert t.allclose(laplace(zs, 1., 3.),   trans(zs, t.distributions.Laplace(1., 3
 assert t.allclose(gumbel(zs, 1., 3.),    trans(zs, t.distributions.Gumbel(1., 3.)), rtol=1E-4, atol=1E-4)
 assert t.allclose(logistic(t.randn(10**6), 0., 1.).var(),  t.Tensor([math.pi**2/3]), rtol=1E-3, atol=1E-3)
 
-#def mvn(...)
+from model import RV
+class Normal(RV):
+    def __call__(self, loc, scale):
+        return normal(self.x, loc, scale)
+
+class LogNormal(RV):
+    def __call__(self, mu, sigma):
+        return lognormal(self.x, mu, sigma)
+
+class Uniform(RV):
+    def __call__(self, a, b):
+        return uniform(self.x, a, b)
+
+class Exponential(RV):
+    def __call__(self, rate):
+        exponential(self.x, rate)
+
+class Laplace(RV):
+    def __call__(self, loc, scale):
+        laplace(self.x, loc, scale)
+
+class Gumbel(RV):
+    def __call__(self, mu, beta):
+        gumbel(self.x, mu, beta)
+
+class Logistic(RV):
+    def __call__(self, loc, scale):
+        logistic(self.x, loc, scale)
