@@ -40,18 +40,22 @@ def log_cdf(z):
 
 #### Functions to transform IID Gaussian noise into noise from a given distribution
 def normal(z, loc, scale):
+    assert t.all(t.zeros(()) <= scale)
     return loc + scale * z
 
 def lognormal(z, mu, sigma):
+    assert t.all(t.zeros(()) <= sigma)
     return (mu + sigma * z).exp()
 
 def uniform(z, a, b):
     return a + (b-a)*cdf(z)
 
 def exponential(z, rate):
+    assert t.all(t.zeros(()) <= rate)
     return -log_ccdf(z)/rate
 
 def laplace(z, loc, scale):
+    assert t.all(t.zeros(()) <= scale)
     sl = t.where(
         z < 0,
            math.log(2) + log_cdf(z),
@@ -59,11 +63,28 @@ def laplace(z, loc, scale):
     )
     return loc + scale*sl
 
-def gumbel(z, mu, beta):
-    return mu - beta*t.log(-log_cdf(z))
+def gumbel(z, mu, scale):
+    assert t.all(t.zeros(()) <= scale)
+    return mu - scale*t.log(-log_cdf(z))
 
 def logistic(z, loc, scale):
+    assert t.all(t.zeros(()) <= scale)
     return loc + scale * (log_cdf(z) - log_ccdf(z))
+
+def delta(z, loc):
+    # 0*z ensures that the shape of the returned tensor is the same as for other distributions
+    return 0*z+loc
+
+def pareto(z, shape, scale):
+    assert t.all(t.zeros(()) <= shape)
+    assert t.all(t.zeros(()) <= scale)
+    return scale * t.exp(-log_ccdf(z)/shape)
+
+def gammaish(z, shape, scale):
+    assert t.all(4.*t.ones(()) < shape)
+    d = shape - 1/3
+    v = (1+z*t.rsqrt(9*d))**3
+    return scale*d*v
 
 def trans(z, dist):
     """
@@ -74,40 +95,87 @@ def trans(z, dist):
     """
     return dist.icdf(cdf(z))
 
-zs = t.arange(-2, 3.)
-assert t.allclose(normal(zs, 1., 2.),    trans(zs, Normal(1., 2.)), rtol=1E-4, atol=1E-4)
-assert t.allclose(lognormal(zs, 1., 2.), trans(zs, t.distributions.LogNormal(1., 2.)), rtol=1E-4, atol=1E-4)
-assert t.allclose(uniform(zs, 1., 3.),   trans(zs, t.distributions.Uniform(1., 3.)), rtol=1E-4, atol=1E-4)
-assert t.allclose(exponential(zs, 2.),   trans(zs, t.distributions.Exponential(2.)), rtol=1E-4, atol=1E-4)
-assert t.allclose(laplace(zs, 1., 3.),   trans(zs, t.distributions.Laplace(1., 3.)), rtol=1E-4, atol=1E-4)
-assert t.allclose(gumbel(zs, 1., 3.),    trans(zs, t.distributions.Gumbel(1., 3.)), rtol=1E-4, atol=1E-4)
-assert t.allclose(logistic(t.randn(10**6), 0., 1.).var(),  t.Tensor([math.pi**2/3]), rtol=1E-3, atol=1E-3)
+from bb import RV, Model
+class AbstractNormal():
+    dist = staticmethod(normal)
+    
+class AbstractLogNormal():
+    dist = staticmethod(lognormal)
 
-from bb import RV
-class Normal(RV):
-    def forward(self, loc, scale):
-        return normal(self.x, loc, scale)
+class AbstractUniform():
+    dist = staticmethod(uniform)
 
-class LogNormal(RV):
-    def forward(self, mu, sigma):
-        return lognormal(self.x, mu, sigma)
+class AbstractExponential():
+    dist = staticmethod(exponential)
 
-class Uniform(RV):
-    def forward(self, a, b):
-        return uniform(self.x, a, b)
+class AbstractLaplace():
+    dist = staticmethod(laplace)
 
-class Exponential(RV):
-    def forward(self, rate):
-        exponential(self.x, rate)
+class AbstractGumbel():
+    dist = staticmethod(gumbel)
 
-class Laplace(RV):
-    def forward(self, loc, scale):
-        laplace(self.x, loc, scale)
+class AbstractLogistic():
+    dist = staticmethod(gumbel)
 
-class Gumbel(RV):
-    def forward(self, mu, beta):
-        gumbel(self.x, mu, beta)
+class AbstractDelta():
+    dist = staticmethod(delta)
 
-class Logistic(RV):
-    def forward(self, loc, scale):
-        logistic(self.x, loc, scale)
+class AbstractPareto():
+    dist = staticmethod(pareto)
+
+class AbstractGammaish():
+    dist = staticmethod(gammaish)
+
+
+class FixedDist(Model):
+    def __init__(self, size, *args):
+        super().__init__()
+        self.z = RV(size)
+        for arg in args:
+            assert not (isinstance(arg, RV) or isinstance(arg, Model))
+        self.args = args
+
+    def forward(self):
+        return self.dist(self.z(), *self.args)
+
+class FNormal(AbstractNormal, FixedDist): pass
+class FLogNormal(AbstractLogNormal, FixedDist): pass
+class FUniform(AbstractUniform, FixedDist): pass
+class FExponential(AbstractExponential, FixedDist): pass
+class FLaplace(AbstractLaplace, FixedDist): pass
+class FGumbel(AbstractGumbel, FixedDist): pass
+class FLogistic(AbstractLogistic, FixedDist): pass
+class FDelta(AbstractDelta, FixedDist): pass
+class FPareto(AbstractPareto, FixedDist): pass
+class FGammaish(AbstractGammaish, FixedDist): pass
+
+
+
+class HierarchicalDist(Model):
+    def __init__(self, size, *args):
+        super().__init__()
+        self.z = RV(size)
+        for arg in args:
+            assert isinstance(arg, RV) or isinstance(arg, Model)
+        self.args = args
+
+    def forward(self):
+        return self.dist(self.z(), *(arg() for arg in self.args))
+
+class HNormal(AbstractNormal, HierarchicalDist): pass
+class HLogNormal(AbstractLogNormal, HierarchicalDist): pass
+class HUniform(AbstractUniform, HierarchicalDist): pass
+class HExponential(AbstractExponential, HierarchicalDist): pass
+class HLaplace(AbstractLaplace, HierarchicalDist): pass
+class HGumbel(AbstractGumbel, HierarchicalDist): pass
+class HLogistic(AbstractLogistic, HierarchicalDist): pass
+class HDelta(AbstractDelta, HierarchicalDist): pass
+class HPareto(AbstractPareto, HierarchicalDist): pass
+class HGammaish(AbstractGammaish, HierarchicalDist): pass
+
+#Others (with tractable cdf/icdfs):
+#Generalised logistic
+
+#### Gammaish
+
+

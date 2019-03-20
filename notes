@@ -1,7 +1,6 @@
 TODOs:
-  programming:
-    nesting/abstraction
-  write library of conjugate likelihood functions
+  library of heirarchical functions
+  record the output of modules?
   examples:
     neural firing
     calcium? (Exponential + threshold).

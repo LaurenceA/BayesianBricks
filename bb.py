@@ -102,6 +102,14 @@ class Model(nn.Module):
     def randn(self):
         for v in self._modules.values():
             v.randn()
+
+    def forward(self, obs):
+        """
+        Typically, redefine models to provide an output.
+        The outer Model should provide a log-probability when called.
+        Here is a fallback to allow
+        """
+        return self.likelihood(*args, **kwargs).log_prob(obs).sum()
                 
     #### VI
 
@@ -229,38 +237,3 @@ class HMC():
         for i in range(self.chain_length):
             self.step(i)
 
-
-#### Testing!
-
-#class Normal(RV):
-#    def __call__(self, loc, scale):
-#        return loc + scale*self.x
-#
-#class Test(Model):
-#    def __init__(self):
-#        super().__init__()
-#        self.a = Normal(())
-#        self.b = Normal(())
-#
-#    def __call__(self):
-#        a = self.a(0., 1.)
-#        b = self.b(0., 1.)
-#        mean = t.stack([a, b])
-#        scale = t.Tensor([1., 0.01])
-#        return t.distributions.Normal(mean, scale).log_prob(t.zeros(2)).sum()
-#
-#m = Test()
-#m()
-#
-#m.vi_init()
-#m.vi_rsample_kl()
-#
-#vi = VI(m)
-#vi.fit(3*10**4)
-#
-#hmc = HMC(m, 500)
-#
-#hmc.run()
-#
-#print(m.a.hmc_samples.var())
-#print(m.b.hmc_samples.var())

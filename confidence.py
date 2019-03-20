@@ -59,8 +59,8 @@ class Thresholds(Model):
         ps = t.exp(logits - t.logsumexp(logits, dim=-1, keepdim=True))
         cdfs = t.cumsum(ps, dim=-1)[..., :-1]
 
-        n = t.distributions.Normal(
-        return n.icdf(
+        n = t.distributions.Normal(0., 1.)
+        return n.icdf(cdfs)
         
 
 th = Thresholds((), 7)
