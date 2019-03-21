@@ -114,18 +114,6 @@ class Model(nn.Module):
     def rvs(self):
         return (mod for mod in self.modules() if isinstance(mod, RV))
 
-    ##### VI
-
-    #def vi_init(self):
-    #    for v in self._modules.values():
-    #        v.vi_init()
-
-    #def vi_rsample_kl(self):
-    #    total = 0.
-    #    for v in self._modules.values():
-    #        total += v.vi_rsample_kl()
-    #    return total
-
     ##### HMC
     #def hmc_init(self, chain_length):
     #    for v in self._modules.values():
