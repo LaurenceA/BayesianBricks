@@ -114,15 +114,6 @@ class Model(nn.Module):
     def rvs(self):
         return (mod for mod in self.modules() if isinstance(mod, RV))
 
-
-    def hmc_refresh_momentum(self):
-        for v in self._modules.values():
-            v.hmc_refresh_momentum()
-
-    def hmc_momentum_step(self, rate):
-        for v in self._modules.values():
-            v.hmc_momentum_step(rate)
-
     def hmc_log_prior_xp(self):
         total = 0.
         for v in self._modules.values():
@@ -186,7 +177,8 @@ class HMC():
         self.hmc_zero_grad()
         lp = self.model()
         lp.backward()
-        self.model.hmc_momentum_step(rate)
+        for rv in self.model.rvs():
+            rv.hmc_momentum_step(rate)
         return lp
 
     def accept(self):
@@ -201,9 +193,12 @@ class HMC():
         for rv in self.model.rvs():
             rv.hmc_zero_grad()
 
+    def refresh_momentum(self):
+        for rv in self.model.rvs():
+            rv.hmc_refresh_momentum()
 
     def step(self, i=None):
-        self.model.hmc_refresh_momentum()
+        self.refresh_momentum()
 
         lp_prior_xp = self.model.hmc_log_prior_xp()
         lp_like     = self.momentum_step(0.5*self.rate)
