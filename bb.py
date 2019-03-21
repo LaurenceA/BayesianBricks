@@ -115,10 +115,6 @@ class Model(nn.Module):
         return (mod for mod in self.modules() if isinstance(mod, RV))
 
 
-    def hmc_record_sample(self, i):
-        for v in self._modules.values():
-            v.hmc_record_sample(i)
-
     def hmc_zero_grad(self):
         for v in self._modules.values():
             v.hmc_zero_grad()
@@ -204,6 +200,11 @@ class HMC():
         for rv in self.model.rvs():
             rv.hmc_accept()
 
+    def record_sample(self, i):
+        for rv in self.model.rvs():
+            rv.hmc_record_sample(i)
+
+
     def step(self, i=None):
         self.model.hmc_refresh_momentum()
 
@@ -228,7 +229,7 @@ class HMC():
             self.accept()
 
         if i is not None:
-            self.model.hmc_record_sample(i)
+            self.record_sample(i)
 
     def run(self):
         for _ in range(self.warmup):
