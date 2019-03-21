@@ -153,9 +153,12 @@ class VI():
     def __init__(self, model, opt=t.optim.Adam, opt_kwargs={}):
         super().__init__()
         self.model = model
+        self.vi_init()
+        self.opt = opt(self.model.parameters(), **opt_kwargs)
+
+    def vi_init(self):
         for rv in self.model.rvs():
             rv.vi_init()
-        self.opt = opt(self.model.parameters(), **opt_kwargs)
 
     def fit_one_step(self):
         self.model.zero_grad()
@@ -179,14 +182,16 @@ class VI():
 class HMC():
     def __init__(self, model, chain_length, warmup=0, rate=1E-2, trajectory_length=1.):
         self.model = model
-        #model.hmc_init(chain_length)
-        for rv in self.model.rvs():
-            rv.hmc_init(chain_length)
+        self.hmc_init(chain_length)
 
         self.chain_length = chain_length
         self.warmup = warmup
         self.rate = rate
         self.steps = int(trajectory_length // rate)
+
+    def hmc_init(self, chain_length):
+        for rv in self.model.rvs():
+            rv.hmc_init(chain_length)
 
     def position_step(self, rate):
         self.model.hmc_position_step(rate)
