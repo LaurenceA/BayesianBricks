@@ -115,10 +115,6 @@ class Model(nn.Module):
         return (mod for mod in self.modules() if isinstance(mod, RV))
 
 
-    def hmc_zero_grad(self):
-        for v in self._modules.values():
-            v.hmc_zero_grad()
-
     def hmc_position_step(self, rate):
         for v in self._modules.values():
             v.hmc_position_step(rate)
@@ -190,7 +186,7 @@ class HMC():
         self.model.hmc_position_step(rate)
 
     def momentum_step(self, rate):
-        self.model.hmc_zero_grad()
+        self.hmc_zero_grad()
         lp = self.model()
         lp.backward()
         self.model.hmc_momentum_step(rate)
@@ -203,6 +199,10 @@ class HMC():
     def record_sample(self, i):
         for rv in self.model.rvs():
             rv.hmc_record_sample(i)
+
+    def hmc_zero_grad(self):
+        for rv in self.model.rvs():
+            rv.hmc_zero_grad()
 
 
     def step(self, i=None):
