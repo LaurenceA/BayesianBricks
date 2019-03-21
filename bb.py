@@ -114,40 +114,35 @@ class Model(nn.Module):
     def rvs(self):
         return (mod for mod in self.modules() if isinstance(mod, RV))
 
-    ##### HMC
-    #def hmc_init(self, chain_length):
-    #    for v in self._modules.values():
-    #        v.hmc_init(chain_length)
+    def hmc_accept(self):
+        for v in self._modules.values():
+            v.hmc_accept()
 
-    #def hmc_accept(self):
-    #    for v in self._modules.values():
-    #        v.hmc_accept()
+    def hmc_record_sample(self, i):
+        for v in self._modules.values():
+            v.hmc_record_sample(i)
 
-    #def hmc_record_sample(self, i):
-    #    for v in self._modules.values():
-    #        v.hmc_record_sample(i)
+    def hmc_zero_grad(self):
+        for v in self._modules.values():
+            v.hmc_zero_grad()
 
-    #def hmc_zero_grad(self):
-    #    for v in self._modules.values():
-    #        v.hmc_zero_grad()
+    def hmc_position_step(self, rate):
+        for v in self._modules.values():
+            v.hmc_position_step(rate)
 
-    #def hmc_position_step(self, rate):
-    #    for v in self._modules.values():
-    #        v.hmc_position_step(rate)
+    def hmc_refresh_momentum(self):
+        for v in self._modules.values():
+            v.hmc_refresh_momentum()
 
-    #def hmc_refresh_momentum(self):
-    #    for v in self._modules.values():
-    #        v.hmc_refresh_momentum()
+    def hmc_momentum_step(self, rate):
+        for v in self._modules.values():
+            v.hmc_momentum_step(rate)
 
-    #def hmc_momentum_step(self, rate):
-    #    for v in self._modules.values():
-    #        v.hmc_momentum_step(rate)
-
-    #def hmc_log_prior_xp(self):
-    #    total = 0.
-    #    for v in self._modules.values():
-    #        total += v.hmc_log_prior_xp()
-    #    return total
+    def hmc_log_prior_xp(self):
+        total = 0.
+        for v in self._modules.values():
+            total += v.hmc_log_prior_xp()
+        return total
 
 
 
@@ -184,7 +179,9 @@ class VI():
 class HMC():
     def __init__(self, model, chain_length, warmup=0, rate=1E-2, trajectory_length=1.):
         self.model = model
-        model.hmc_init(chain_length)
+        #model.hmc_init(chain_length)
+        for rv in self.model.rvs():
+            rv.hmc_init(chain_length)
 
         self.chain_length = chain_length
         self.warmup = warmup
