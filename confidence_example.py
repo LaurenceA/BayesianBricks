@@ -7,7 +7,6 @@ from distributions import Normal, LogGamma
 
 class Likelihood(Model):
     """
-
     """
     def __init__(self, contrast_interval_1, contrast_interval_2, C):
         super().__init__()

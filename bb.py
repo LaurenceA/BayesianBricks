@@ -9,13 +9,13 @@ class RV(nn.Module):
     def __init__(self, size):
         super().__init__()
         self.size = t.Size(size)
-        self.x = t.randn(size)
+        self._value = t.randn(size)
 
     def randn(self):
-        self.x = t.randn(self.size)
+        self._value = t.randn(self.size)
 
     def __call__(self):
-        return self.x
+        return self._value
 
     #### VI
 
@@ -40,11 +40,13 @@ class RV(nn.Module):
         log_var = self.vi_log_variance()
 
         scale = (0.5*log_var).exp()
-        self.x = self.vi_mean + scale * z
+        self._value = self.vi_mean + scale * z
 
-        logp = - 0.5 * (self.x**2).sum()
+        logp = - 0.5 * (self._value**2).sum()
         logq = - 0.5 * (z**2 + log_var).sum()
         return logq - logp
+
+
 
     #### HMC
 
@@ -56,28 +58,28 @@ class RV(nn.Module):
         self.hmc_x_chain = self.vi_mean.detach().clone()
 
         #state of leapfrog integrator
-        self.x = self.hmc_x_chain.clone().requires_grad_()
+        self._value = self.hmc_x_chain.clone().requires_grad_()
         self.hmc_p = t.zeros(self.size)
 
         self.hmc_samples = t.zeros(t.Size([chain_length]) + self.size, device="cpu")
 
         assert not self.hmc_x_chain.requires_grad
-        assert     self.x.requires_grad
+        assert     self._value.requires_grad
         assert not self.hmc_p.requires_grad
 
     def hmc_momentum_step(self, rate):
-        self.hmc_p.add_(rate, self.x.grad)
-        self.hmc_p.add_(-rate, self.x.data)
+        self.hmc_p.add_(rate, self._value.grad)
+        self.hmc_p.add_(-rate, self._value.data)
 
     def hmc_position_step(self, rate):
-        self.x.data.addcmul_(rate, self.hmc_inv_mass, self.hmc_p)
+        self._value.data.addcmul_(rate, self.hmc_inv_mass, self.hmc_p)
 
     def hmc_zero_grad(self):
-        if self.x.grad is not None:
-            self.x.grad.fill_(0.)
+        if self._value.grad is not None:
+            self._value.grad.fill_(0.)
 
     def hmc_log_prior_xp(self):
-        lp_x = -0.5*(self.x**2).sum()
+        lp_x = -0.5*(self._value**2).sum()
         lp_p = -0.5*(self.hmc_inv_mass*self.hmc_p**2).sum()
         return lp_x + lp_p
 
@@ -85,7 +87,7 @@ class RV(nn.Module):
         self.hmc_samples[i,...] = self.hmc_x_chain
 
     def hmc_accept(self):
-        self.hmc_x_chain.fill_(self.x)
+        self.hmc_x_chain.fill_(self._value)
 
     def hmc_refresh_momentum(self):
         self.hmc_p.normal_(0., 1.)
@@ -100,6 +102,9 @@ class Model(nn.Module):
     """
     def rvs(self):
         return (mod for mod in self.modules() if isinstance(mod, RV))
+
+    def models(self):
+        return (mod for mod in self.modules() if isinstance(mod, Model))
 
     def refresh(self):
         for rv in self.rvs():

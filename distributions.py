@@ -139,7 +139,6 @@ def loggamma(z, shape=None, scale=None, mean=None, log_scale=None):
 
     # Modify Gamma using uniforms
     logUs = log_cdf(zUs)
-    print(logUs)
     return log_scale + logG + (logUs/(shape + t.arange(gamma_K, dtype=t.float).view(-1, *(1 for i in range(len(zUs.shape)-1))))).sum(0)
 def loginvgamma(z, *args, **kwargs):
     return -loggamma(z, *args, **kwargs)
@@ -201,11 +200,13 @@ class Dist(Model):
 
     def forward(self, **kwargs):
         # combine kwargs provided at initialization and runtime
-        return self.dist(
+        ret = self.dist(
             self.z(), 
             **{k:unwrap(v) for k,v in self.kwargs.items()},
             **kwargs
         )
+        self.prev = ret
+        return ret
 
 class Normal(Dist):
     dist = staticmethod(normal)
