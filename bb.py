@@ -115,10 +115,6 @@ class Model(nn.Module):
         return (mod for mod in self.modules() if isinstance(mod, RV))
 
 
-    def hmc_position_step(self, rate):
-        for v in self._modules.values():
-            v.hmc_position_step(rate)
-
     def hmc_refresh_momentum(self):
         for v in self._modules.values():
             v.hmc_refresh_momentum()
@@ -183,7 +179,8 @@ class HMC():
             rv.hmc_init(chain_length)
 
     def position_step(self, rate):
-        self.model.hmc_position_step(rate)
+        for rv in self.model.rvs():
+            rv.hmc_position_step(rate)
 
     def momentum_step(self, rate):
         self.hmc_zero_grad()
