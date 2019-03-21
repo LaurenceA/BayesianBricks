@@ -26,10 +26,10 @@ class Likelihood(Model):
 
         #self.thresholds = Thresholds(t.Size([self.N, 1]), C)
 
-        log_prec = LogGamma((self.N, 1), 2., 0.5)
+        self.log_prec = LogGamma((self.N, 1), shape=2., scale=0.5)
 
-        self.noise_interval_1 = Normal([self.N, self.T], 0., log_prec=log_prec)
-        self.noise_interval_2 = Normal([self.N, self.T], 0., log_prec=log_prec)
+        self.noise_interval_1 = Normal([self.N, self.T], loc=0., log_prec=self.log_prec)
+        self.noise_interval_2 = Normal([self.N, self.T], loc=0., log_prec=self.log_prec)
 
     def forward(self):
         observed_contrast_1 = self.contrast_interval_1 + self.noise_interval_1()

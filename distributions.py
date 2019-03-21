@@ -13,12 +13,15 @@ def ccdf(z):
     return N.cdf(-z)
 
 def log_ccdf_direct(z):
+    #Need to clamp z in order to avoid NaN gradients propagating back through t.where
+    z = t.clamp(z, max=4.5)
     return N.cdf(-z).log()
 
 def log_ccdf_expansion(z):
     # Only makes sense for large positive z
     # Based on the Mills Ratio (see Wikipedia)
     # Computes log( pdf(z)/z ( 1 - 1/z^2 + 3/z^4 - 3*5/z^6 + 3*5*7/z^8 ... ))
+    z = t.clamp(z, min=4.5)
     log_prefac = N.log_prob(z) - t.log(z)
     zm2 = 1/z**2
     expansion = - zm2 * (1 - 3*zm2 * (1 - 5*zm2 * (1 - 7*zm2 * (1 - 9*zm2))))
@@ -53,8 +56,9 @@ def normal(z, loc, scale=None, log_scale=None, var=None, log_var=None, prec=None
         scale = t.rsqrt(prec)
     elif log_prec is not None:
         scale = (-log_prec/2).exp()
-
+    
     assert t.all(t.zeros(()) <= scale)
+
 
     return loc + scale * z
 
@@ -135,6 +139,7 @@ def loggamma(z, shape=None, scale=None, mean=None, log_scale=None):
 
     # Modify Gamma using uniforms
     logUs = log_cdf(zUs)
+    print(logUs)
     return log_scale + logG + (logUs/(shape + t.arange(gamma_K, dtype=t.float).view(-1, *(1 for i in range(len(zUs.shape)-1))))).sum(0)
 def loginvgamma(z, *args, **kwargs):
     return -loggamma(z, *args, **kwargs)
@@ -174,6 +179,8 @@ from bb import RV, Model
 def unwrap(x):
     if isinstance(x, RV) or isinstance(x, Model):
         return x()
+    if isinstance(x, float):
+        return t.ones(())*x
     else:
         return x
 

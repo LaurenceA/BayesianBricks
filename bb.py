@@ -98,21 +98,12 @@ class Model(nn.Module):
     __init__ 
     __call__
     """
-
-    def randn(self):
-        for v in self._modules.values():
-            v.randn()
-
-    def forward(self, obs):
-        """
-        Typically, redefine models to provide an output.
-        The outer Model should provide a log-probability when called.
-        Here is a fallback to allow
-        """
-        return self.likelihood(*args, **kwargs).log_prob(obs).sum()
-
     def rvs(self):
         return (mod for mod in self.modules() if isinstance(mod, RV))
+
+    def refresh(self):
+        for rv in self.rvs():
+            rv.randn()
 
 
 
