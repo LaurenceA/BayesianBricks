@@ -114,9 +114,6 @@ class Model(nn.Module):
     def rvs(self):
         return (mod for mod in self.modules() if isinstance(mod, RV))
 
-    def hmc_accept(self):
-        for v in self._modules.values():
-            v.hmc_accept()
 
     def hmc_record_sample(self, i):
         for v in self._modules.values():
@@ -203,6 +200,9 @@ class HMC():
         self.model.hmc_momentum_step(rate)
         return lp
 
+    def accept(self):
+        for rv in self.model.rvs():
+            rv.hmc_accept()
 
     def step(self, i=None):
         self.model.hmc_refresh_momentum()
@@ -225,7 +225,7 @@ class HMC():
 
         #Acceptance
         if t.rand(()) < acceptance_prob:
-            self.model.hmc_accept()
+            self.accept()
 
         if i is not None:
             self.model.hmc_record_sample(i)
