@@ -114,12 +114,6 @@ class Model(nn.Module):
     def rvs(self):
         return (mod for mod in self.modules() if isinstance(mod, RV))
 
-    def hmc_log_prior_xp(self):
-        total = 0.
-        for v in self._modules.values():
-            total += v.hmc_log_prior_xp()
-        return total
-
 
 
 class VI():
@@ -197,10 +191,16 @@ class HMC():
         for rv in self.model.rvs():
             rv.hmc_refresh_momentum()
 
+    def log_prior_xp(self):
+        total = 0.
+        for rv in self.model.rvs():
+            total += rv.hmc_log_prior_xp()
+        return total
+
     def step(self, i=None):
         self.refresh_momentum()
 
-        lp_prior_xp = self.model.hmc_log_prior_xp()
+        lp_prior_xp = self.log_prior_xp()
         lp_like     = self.momentum_step(0.5*self.rate)
         lp_init     = lp_prior_xp + lp_like
 
@@ -211,7 +211,7 @@ class HMC():
         self.position_step(self.rate)
 
         lp_like     = self.momentum_step(0.5*self.rate)
-        lp_prior_xp = self.model.hmc_log_prior_xp()
+        lp_prior_xp = self.log_prior_xp()
         lp_prop     = lp_prior_xp + lp_like
 
         acceptance_prob = (lp_prop - lp_init).exp()
