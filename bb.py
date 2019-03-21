@@ -110,53 +110,56 @@ class Model(nn.Module):
         Here is a fallback to allow
         """
         return self.likelihood(*args, **kwargs).log_prob(obs).sum()
-                
-    #### VI
 
-    def vi_init(self):
-        for v in self._modules.values():
-            v.vi_init()
+    def rvs(self):
+        return (mod for mod in self.modules() if isinstance(mod, RV))
 
-    def vi_rsample_kl(self):
-        total = 0.
-        for v in self._modules.values():
-            total += v.vi_rsample_kl()
-        return total
+    ##### VI
 
-    #### HMC
-    def hmc_init(self, chain_length):
-        for v in self._modules.values():
-            v.hmc_init(chain_length)
+    #def vi_init(self):
+    #    for v in self._modules.values():
+    #        v.vi_init()
 
-    def hmc_accept(self):
-        for v in self._modules.values():
-            v.hmc_accept()
+    #def vi_rsample_kl(self):
+    #    total = 0.
+    #    for v in self._modules.values():
+    #        total += v.vi_rsample_kl()
+    #    return total
 
-    def hmc_record_sample(self, i):
-        for v in self._modules.values():
-            v.hmc_record_sample(i)
+    ##### HMC
+    #def hmc_init(self, chain_length):
+    #    for v in self._modules.values():
+    #        v.hmc_init(chain_length)
 
-    def hmc_zero_grad(self):
-        for v in self._modules.values():
-            v.hmc_zero_grad()
+    #def hmc_accept(self):
+    #    for v in self._modules.values():
+    #        v.hmc_accept()
 
-    def hmc_position_step(self, rate):
-        for v in self._modules.values():
-            v.hmc_position_step(rate)
+    #def hmc_record_sample(self, i):
+    #    for v in self._modules.values():
+    #        v.hmc_record_sample(i)
 
-    def hmc_refresh_momentum(self):
-        for v in self._modules.values():
-            v.hmc_refresh_momentum()
+    #def hmc_zero_grad(self):
+    #    for v in self._modules.values():
+    #        v.hmc_zero_grad()
 
-    def hmc_momentum_step(self, rate):
-        for v in self._modules.values():
-            v.hmc_momentum_step(rate)
+    #def hmc_position_step(self, rate):
+    #    for v in self._modules.values():
+    #        v.hmc_position_step(rate)
 
-    def hmc_log_prior_xp(self):
-        total = 0.
-        for v in self._modules.values():
-            total += v.hmc_log_prior_xp()
-        return total
+    #def hmc_refresh_momentum(self):
+    #    for v in self._modules.values():
+    #        v.hmc_refresh_momentum()
+
+    #def hmc_momentum_step(self, rate):
+    #    for v in self._modules.values():
+    #        v.hmc_momentum_step(rate)
+
+    #def hmc_log_prior_xp(self):
+    #    total = 0.
+    #    for v in self._modules.values():
+    #        total += v.hmc_log_prior_xp()
+    #    return total
 
 
 
@@ -166,13 +169,14 @@ class VI():
     """
     def __init__(self, model, opt=t.optim.Adam, opt_kwargs={}):
         super().__init__()
-        model.vi_init()
         self.model = model
+        for rv in self.model.rvs():
+            rv.vi_init()
         self.opt = opt(self.model.parameters(), **opt_kwargs)
 
     def fit_one_step(self):
         self.model.zero_grad()
-        kl = self.model.vi_rsample_kl()
+        kl = self.rsample_kl()
         elbo = self.model() - kl
         loss = -elbo
         loss.backward()
@@ -182,6 +186,12 @@ class VI():
     def fit(self, T=1000):
         for _ in range(T):
             elbo = self.fit_one_step()
+
+    def rsample_kl(self):
+        total = 0.
+        for rv in self.model.rvs():
+            total += rv.vi_rsample_kl()
+        return total
 
 class HMC():
     def __init__(self, model, chain_length, warmup=0, rate=1E-2, trajectory_length=1.):

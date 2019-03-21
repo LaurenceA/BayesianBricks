@@ -1,14 +1,21 @@
 TODOs:
-  library of heirarchical functions
   record the output of modules?
+  make sure that RV's don't get touched twice using _modules to define _RVs
+
   examples:
     neural firing
     calcium? (Exponential + threshold).
     flips in 
     
     
-  
-  
+Gamma priors:
+  scale: 
+    has Gamma conjugate prior
+    equals var/mean, and can thus be viewed as a dispersion parameter.
+  mean: 
+    resonable to use a Gamma prior
+  shape:
+    obtain using mean / scale
 
 testing
 
