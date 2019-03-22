@@ -1,8 +1,7 @@
 TODOs:
   allow for reduced-rank mass matricies
-  record the output of modules
-  batch outputs
-  make sure that RV's don't get touched twice using _modules to define _RVs
+  allow minibatching 
+  docs
 
   examples:
     neural firing

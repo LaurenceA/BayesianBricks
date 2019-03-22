@@ -226,13 +226,21 @@ class HMC():
         acceptance_prob = (lp_prop - lp_init).exp()
 
         #Acceptance
-        if t.rand(()) < acceptance_prob:
+
+        accept = t.rand(()) < acceptance_prob
+        if accept:
             self.accept()
+        return accept
 
     def run(self):
+        accepts = 0
+        iters = 0
         for _ in range(self.warmup):
             self.step()
 
         for i in range(self.chain_length):
             self.step(i)
+            accepts += self.step()
+            iters += 1
+        return accepts / iters
 
