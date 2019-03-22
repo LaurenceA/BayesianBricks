@@ -3,6 +3,8 @@ import torch as t
 
 from distributions import Normal, LogGamma, Gamma, Exponential
 
+t.set_default_tensor_type(t.cuda.FloatTensor)
+
 class Likelihood(Model):
     """
     """
@@ -10,7 +12,7 @@ class Likelihood(Model):
         super().__init__()
         self.N = contrast.size(0)
         self.T = contrast.size(1)
-        self.scale = Exponential((self.N, 1), rate=4.)
+        self.scale = Exponential((self.N, 1), rate=1.)
         self.observation = Normal((self.N, self.T), loc=contrast, scale=self.scale)
 
     def forward(self):
