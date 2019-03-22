@@ -56,7 +56,6 @@ class RV(nn.Module):
         self.hmc_p.data.add_(-rate, self._value.data)
 
     def hmc_position_step(self, rate):
-        #self._value.data.addcmul_(rate, self.hmc_inv_mass, self.hmc_p)
         self._value.data.add_(-rate, self.hmc_p.grad)
 
     def hmc_log_prior_xp(self):
@@ -68,8 +67,7 @@ class RV(nn.Module):
         self.hmc_x_chain.copy_(self._value)
 
     def hmc_step_initialize(self):
-        self.hmc_p = self.Pp.sample().requires_grad_()#.normal_(0., 1.)
-        #self.hmc_p.mul_(self.hmc_sqrt_mass)
+        self.hmc_p = self.Pp.sample().requires_grad_()
         self._value.data.copy_(self.hmc_x_chain)
 
 
@@ -149,7 +147,8 @@ class HMC():
                 m.hmc_samples = t.zeros(t.Size([chain_length]) + m._value.size(), device="cpu")
 
             if isinstance(m, RV):
-                m.Pp = Normal(0., m.vi_inv_std())
+                #m.Pp = Normal(0., m.vi_inv_std())
+                m.Pp = Laplace(0., 1.)
 
                 #state of Markov chain 
                 m.hmc_x_chain = m.vi_mean.detach().clone()
@@ -175,7 +174,7 @@ class HMC():
     def momentum_step(self, rate):
         self.hmc_zero_grad()
         lp = self.model()
-        lp.backward(retain_graph=True)
+        lp.backward()
         for rv in self.model.rvs():
             rv.hmc_momentum_step(rate)
         return lp
