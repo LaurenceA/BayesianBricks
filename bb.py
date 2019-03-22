@@ -66,15 +66,13 @@ class RV(nn.Module):
         lp_p = -0.5*(self.hmc_inv_mass*self.hmc_p**2).sum()
         return lp_x + lp_p
 
-    def hmc_record_sample(self, i):
-        self.hmc_samples[i,...] = self.hmc_x_chain
-
     def hmc_accept(self):
         self.hmc_x_chain.copy_(self._value)
 
-    def hmc_refresh_momentum(self):
+    def hmc_step_initialize(self):
         self.hmc_p.normal_(0., 1.)
         self.hmc_p.mul_(self.hmc_sqrt_mass)
+        self._value.data.copy_(self.hmc_x_chain)
 
 
 class Model(nn.Module):
@@ -184,16 +182,17 @@ class HMC():
             rv.hmc_accept()
 
     def record_sample(self, i):
-        for rv in self.model.rvs():
-            rv.hmc_record_sample(i)
+        for m in self.model.modules():
+            if hasattr(m, "_value"):
+                m.hmc_samples[i,...] = m._value
 
     def hmc_zero_grad(self):
         for rv in self.model.rvs():
             rv.hmc_zero_grad()
 
-    def refresh_momentum(self):
+    def step_initialize(self):
         for rv in self.model.rvs():
-            rv.hmc_refresh_momentum()
+            rv.hmc_step_initialize()
 
     def log_prior_xp(self):
         total = 0.
@@ -202,11 +201,17 @@ class HMC():
         return total
 
     def step(self, i=None):
-        self.refresh_momentum()
+        self.step_initialize()
 
         lp_prior_xp = self.log_prior_xp()
         lp_like     = self.momentum_step(0.5*self.rate)
         lp_init     = lp_prior_xp + lp_like
+        
+        #Record sample here, because 
+        #  _value is set to last sample in the MCMC chain, and is not updated by momentum_step
+        #  model has just been run inside momentum_step (so all intermediate _value) are correct
+        if i is not None:
+            self.record_sample(i)
 
         # Integration
         for _ in range(self.steps-1):
@@ -223,9 +228,6 @@ class HMC():
         #Acceptance
         if t.rand(()) < acceptance_prob:
             self.accept()
-
-        if i is not None:
-            self.record_sample(i)
 
     def run(self):
         for _ in range(self.warmup):
