@@ -1,6 +1,7 @@
 import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.distributions import Normal, Laplace, Cauchy
 
 class RV(nn.Module):
     """
@@ -51,27 +52,19 @@ class RV(nn.Module):
     #### HMC
 
     def hmc_momentum_step(self, rate):
-        self.hmc_p.add_(rate, self._value.grad)
-        self.hmc_p.add_(-rate, self._value.data)
+        self.hmc_p.data.add_(rate, self._value.grad)
+        self.hmc_p.data.add_(-rate, self._value.data)
 
     def hmc_position_step(self, rate):
-        self._value.data.addcmul_(rate, self.hmc_inv_mass, self.hmc_p)
-
-    def hmc_zero_grad(self):
-        if self._value.grad is not None:
-            self._value.grad.fill_(0.)
-
-    def hmc_log_prior_xp(self):
-        lp_x = -0.5*(self._value**2).sum()
-        lp_p = -0.5*(self.hmc_inv_mass*self.hmc_p**2).sum()
-        return lp_x + lp_p
+        #self._value.data.addcmul_(rate, self.hmc_inv_mass, self.hmc_p)
+        self._value.data.add_(-rate, self.hmc_p.grad)
 
     def hmc_accept(self):
         self.hmc_x_chain.copy_(self._value)
 
     def hmc_step_initialize(self):
-        self.hmc_p.normal_(0., 1.)
-        self.hmc_p.mul_(self.hmc_sqrt_mass)
+        self.hmc_p = self.Pp.sample().requires_grad_()#.normal_(0., 1.)
+        #self.hmc_p.mul_(self.hmc_sqrt_mass)
         self._value.data.copy_(self.hmc_x_chain)
 
 
@@ -151,8 +144,7 @@ class HMC():
                 m.hmc_samples = t.zeros(t.Size([chain_length]) + m._value.size(), device="cpu")
 
             if isinstance(m, RV):
-                m.hmc_inv_mass = m.vi_variance()
-                m.hmc_sqrt_mass = m.vi_inv_std()
+                m.Pp = Normal(0., m.vi_inv_std())
 
                 #state of Markov chain 
                 m.hmc_x_chain = m.vi_mean.detach().clone()
@@ -166,13 +158,19 @@ class HMC():
                 assert not m.hmc_p.requires_grad
 
     def position_step(self, rate):
+        self.hmc_zero_grad()
+        lp = 0.
+        for rv in self.model.rvs():
+            lp += rv.Pp.log_prob(rv.hmc_p)
+        lp.backward(retain_graph=True)
+
         for rv in self.model.rvs():
             rv.hmc_position_step(rate)
 
     def momentum_step(self, rate):
         self.hmc_zero_grad()
         lp = self.model()
-        lp.backward()
+        lp.backward(retain_graph=True)
         for rv in self.model.rvs():
             rv.hmc_momentum_step(rate)
         return lp
@@ -188,16 +186,25 @@ class HMC():
 
     def hmc_zero_grad(self):
         for rv in self.model.rvs():
-            rv.hmc_zero_grad()
+            if rv._value.grad is not None:
+                rv._value.grad.fill_(0.)
+            if rv.hmc_p.grad is not None:
+                rv.hmc_p.grad.fill_(0.)
 
     def step_initialize(self):
         for rv in self.model.rvs():
             rv.hmc_step_initialize()
 
-    def log_prior_xp(self):
+    def log_prior_x(self):
         total = 0.
         for rv in self.model.rvs():
-            total += rv.hmc_log_prior_xp()
+            total += -0.5*(self._value**2).sum()
+        return total
+
+    def log_prior_p(self):
+        total = 0.
+        for rv in self.model.rvs():
+            total += self.Pp.log_prob(self.hmc_p).sum()
         return total
 
     def step(self, i=None):
