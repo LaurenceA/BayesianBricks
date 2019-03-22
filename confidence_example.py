@@ -3,7 +3,7 @@ import torch as t
 
 #from confidence import confidence, Thresholds
 
-from distributions import Normal, LogGamma
+from distributions import Normal, LogGamma, Gamma, Exponential
 
 class Likelihood(Model):
     """
@@ -25,16 +25,20 @@ class Likelihood(Model):
 
         #self.thresholds = Thresholds(t.Size([self.N, 1]), C)
 
-        self.log_prec = LogGamma((self.N, 1), shape=2., scale=0.5)
+        #self.scale = Gamma((self.N, 1), shape=2., scale=0.1)
+        self.scale = Exponential((self.N, 1), rate=5.)
+        contrast_diff = contrast_interval_2 - contrast_interval_1
+        self.observation = Normal([self.N, self.T], loc=contrast_diff, scale=self.scale)
 
-        self.noise_interval_1 = Normal([self.N, self.T], loc=0., log_prec=self.log_prec)
-        self.noise_interval_2 = Normal([self.N, self.T], loc=0., log_prec=self.log_prec)
+        #self.noise_interval_1 = Normal([self.N, self.T], loc=0., scale=self.scale)
+        #self.noise_interval_2 = Normal([self.N, self.T], loc=0., scale=self.scale)
 
     def forward(self):
-        observed_contrast_1 = self.contrast_interval_1 + self.noise_interval_1()
-        observed_contrast_2 = self.contrast_interval_2 + self.noise_interval_2()
-        z = observed_contrast_2 - observed_contrast_1
-        return t.distributions.Bernoulli(logits=z)
+        #observed_contrast_1 = self.contrast_interval_1 + self.noise_interval_1()
+        #observed_contrast_2 = self.contrast_interval_2 + self.noise_interval_2()
+        #z = observed_contrast_2 - observed_contrast_1
+        #return t.distributions.Bernoulli(logits=self.observation())
+        return t.distributions.Normal(self.observation(), 1.)
 
 class Joint(Model):
     """
@@ -50,7 +54,7 @@ class Joint(Model):
 
 
 N = 3
-T = 100
+T = 1000
 
 contrasts = t.Tensor([0.05, 0.07, 0.10, 0.15])
 interval = t.randint(0, 2, (N, T)).float()
@@ -59,5 +63,11 @@ contrast_interval_2 = (1-interval)*contrasts[t.randint(0, len(contrasts), (N, T)
 
 like = Likelihood(contrast_interval_1, contrast_interval_2, 8)
 obs = like().sample()
+true_latents = like.dump()
+
 m = Joint(like, obs)
+print(m())
+m.refresh()
 vi = VI(m)
+vi.fit(10**4)
+inferred_latents = like.dump()

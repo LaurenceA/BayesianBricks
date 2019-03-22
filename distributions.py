@@ -200,13 +200,13 @@ class Dist(Model):
 
     def forward(self, **kwargs):
         # combine kwargs provided at initialization and runtime
-        ret = self.dist(
+        val = self.dist(
             self.z(), 
             **{k:unwrap(v) for k,v in self.kwargs.items()},
             **kwargs
         )
-        self.prev = ret
-        return ret
+        self._value = val
+        return val
 
 class Normal(Dist):
     dist = staticmethod(normal)

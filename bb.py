@@ -87,7 +87,7 @@ class RV(nn.Module):
         self.hmc_samples[i,...] = self.hmc_x_chain
 
     def hmc_accept(self):
-        self.hmc_x_chain.fill_(self._value)
+        self.hmc_x_chain.copy_(self._value)
 
     def hmc_refresh_momentum(self):
         self.hmc_p.normal_(0., 1.)
@@ -110,7 +110,14 @@ class Model(nn.Module):
         for rv in self.rvs():
             rv.randn()
 
-
+    def dump(self):
+        result = {}
+        for k, v in self.named_modules():
+            if hasattr(v, "_value"):
+                result[k] = v._value
+            else:
+                result[k] = None
+        return result
 
 class VI():
     """
@@ -136,8 +143,10 @@ class VI():
         return elbo
 
     def fit(self, T=1000):
-        for _ in range(T):
+        for i in range(T):
             elbo = self.fit_one_step()
+            if i % 1000 == 0:
+                print(elbo.item())
 
     def rsample_kl(self):
         total = 0.
