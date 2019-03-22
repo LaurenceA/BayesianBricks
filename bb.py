@@ -14,7 +14,7 @@ class RV(nn.Module):
     def randn(self):
         self._value = t.randn(self.size)
 
-    def __call__(self):
+    def forward(self):
         return self._value
 
     #### VI
@@ -240,7 +240,7 @@ class HMC():
 
         for i in range(self.chain_length):
             self.step(i)
-            accepts += self.step()
+            accepts += self.step().item()
             iters += 1
         return accepts / iters
 

@@ -27,7 +27,7 @@ class Likelihood(Model):
 
         f = b * m1 + (1-b)*m2
        
-        return confidence(f, t.arange(-2, 3.), 5.)
+        return confidence(f, t.arange(-4, 5.)/2, 1.)
 
 class Joint(Model):
     """
@@ -42,7 +42,7 @@ class Joint(Model):
         return self.likelihood().log_prob(obs).sum()
 
 
-contrast = t.randn(10, 5000, 1)
+contrast = t.randn(10, 1000, 1)
 like = Likelihood(contrast)
 obs = like().sample()
 true_latents = like.dump()
@@ -54,5 +54,5 @@ vi = VI(m)
 vi.fit(3*10**4)
 inferred_latents = like.dump()
 
-hmc = HMC(m, 100, rate=3E-2, trajectory_length=3E-2)
+hmc = HMC(m, 1000, rate=3E-2, trajectory_length=3E-2)
 print(hmc.run())

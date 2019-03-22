@@ -1,4 +1,8 @@
 TODOs:
+  Fast MHMC
+    proposal scale: 1/sqrt(g^2)
+  HMC rate adaptation.
+  stein variational gradient descent, with additive kernels over each parameter, bandwidth given by vi
   allow for reduced-rank mass matricies
   allow minibatching 
   docs
