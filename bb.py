@@ -50,23 +50,6 @@ class RV(nn.Module):
 
     #### HMC
 
-    def hmc_init(self, chain_length):
-        self.hmc_inv_mass = self.vi_variance()
-        self.hmc_sqrt_mass = self.vi_inv_std()
-
-        #state of Markov chain 
-        self.hmc_x_chain = self.vi_mean.detach().clone()
-
-        #state of leapfrog integrator
-        self._value = self.hmc_x_chain.clone().requires_grad_()
-        self.hmc_p = t.zeros(self.size)
-
-        self.hmc_samples = t.zeros(t.Size([chain_length]) + self.size, device="cpu")
-
-        assert not self.hmc_x_chain.requires_grad
-        assert     self._value.requires_grad
-        assert not self.hmc_p.requires_grad
-
     def hmc_momentum_step(self, rate):
         self.hmc_p.add_(rate, self._value.grad)
         self.hmc_p.add_(-rate, self._value.data)
@@ -165,8 +148,24 @@ class HMC():
         self.steps = int(trajectory_length // rate)
 
     def hmc_init(self, chain_length):
-        for rv in self.model.rvs():
-            rv.hmc_init(chain_length)
+        for m in self.model.modules():
+            if hasattr(m, "_value"):
+                m.hmc_samples = t.zeros(t.Size([chain_length]) + m._value.size(), device="cpu")
+
+            if isinstance(m, RV):
+                m.hmc_inv_mass = m.vi_variance()
+                m.hmc_sqrt_mass = m.vi_inv_std()
+
+                #state of Markov chain 
+                m.hmc_x_chain = m.vi_mean.detach().clone()
+
+                #state of leapfrog integrator
+                m._value = m.hmc_x_chain.clone().requires_grad_()
+                m.hmc_p = t.zeros(m.size)
+
+                assert not m.hmc_x_chain.requires_grad
+                assert     m._value.requires_grad
+                assert not m.hmc_p.requires_grad
 
     def position_step(self, rate):
         for rv in self.model.rvs():
