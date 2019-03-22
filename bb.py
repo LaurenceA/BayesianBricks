@@ -59,6 +59,11 @@ class RV(nn.Module):
         #self._value.data.addcmul_(rate, self.hmc_inv_mass, self.hmc_p)
         self._value.data.add_(-rate, self.hmc_p.grad)
 
+    def hmc_log_prior_xp(self):
+        lp_x = -0.5*(self._value**2).sum()
+        lp_p = self.Pp.log_prob(self.hmc_p).sum()
+        return lp_x + lp_p
+
     def hmc_accept(self):
         self.hmc_x_chain.copy_(self._value)
 
@@ -195,16 +200,10 @@ class HMC():
         for rv in self.model.rvs():
             rv.hmc_step_initialize()
 
-    def log_prior_x(self):
+    def log_prior_xp(self):
         total = 0.
         for rv in self.model.rvs():
-            total += -0.5*(self._value**2).sum()
-        return total
-
-    def log_prior_p(self):
-        total = 0.
-        for rv in self.model.rvs():
-            total += self.Pp.log_prob(self.hmc_p).sum()
+            total += rv.hmc_log_prior_xp()
         return total
 
     def step(self, i=None):
