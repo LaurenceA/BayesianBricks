@@ -52,7 +52,7 @@ class RV(nn.Module):
     #### HMC
 
     def hmc_momentum_step(self, rate):
-        self.hmc_p.data.add_(rate, self._value.grad)
+        self.hmc_p.data.add_( rate, self._value.grad)
         self.hmc_p.data.add_(-rate, self._value.data)
 
     def hmc_position_step(self, rate):
@@ -147,8 +147,10 @@ class HMC():
                 m.hmc_samples = t.zeros(t.Size([chain_length]) + m._value.size(), device="cpu")
 
             if isinstance(m, RV):
-                #m.Pp = Normal(0., m.vi_inv_std())
-                m.Pp = Laplace(0., 1.)
+                #m.Pp = Normal(t.zeros(()).expand(m._value.size()), 1.)
+                m.Pp = Normal(t.zeros(()).expand(m._value.size()), m.vi_inv_std())
+                #m.Pp = Laplace(t.zeros(()).expand(m._value.size()), m.vi_inv_std())
+                #m.Pp = Cauchy(t.zeros(()).expand(m._value.size()), m.vi_inv_std())
 
                 #state of Markov chain 
                 m.hmc_x_chain = m.vi_mean.detach().clone()
@@ -165,7 +167,7 @@ class HMC():
         self.hmc_zero_grad()
         lp = 0.
         for rv in self.model.rvs():
-            lp += rv.Pp.log_prob(rv.hmc_p)
+            lp += rv.Pp.log_prob(rv.hmc_p).sum()
         lp.backward(retain_graph=True)
 
         for rv in self.model.rvs():
