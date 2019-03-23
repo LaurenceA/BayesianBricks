@@ -162,38 +162,40 @@ class MHMC(MCMC):
     def proposal(self):
         for rv in self.rvs:
             rv._value.add_(0.3*rv.vi_std()*t.randn(rv.size))
-            #rv._value.add_(0.03*t.randn(rv.size))
 
 
 class Chain():
     """
     Manages the recording of MCMC samples
     """
-    def __init__(self, model, kernels, chain_length, warmup=0):
+    def __init__(self, model, kernels):
         self.model = model
         self.kernels = kernels
-        self.chain_length = chain_length
-        self.warmup = warmup
 
-        #Initialize recording buffers
-        model()
-        for m in self.model.modules():
-            if hasattr(m, "_value"):
-                m._mcmc_samples = t.zeros(t.Size([chain_length]) + m._value.size(), device="cpu")
-
-    def run(self):
-        for i in range(self.warmup):
+    def run(self, chain_length, warmup=0):
+        #### warmup
+        for i in range(warmup):
             for kernel in self.kernels:
                 kernel.step(self.model)
 
-        for i in range(self.chain_length):
+        #### initialize result dict
+        self.model() 
+        result_dict = {}
+        for k, m in self.model.named_modules():
+            if hasattr(m, "_value"):
+                result_dict[k] = t.zeros(t.Size([chain_length]) + m._value.size(), device="cpu")
+
+        #### run chain
+        for i in range(chain_length):
             for kernel in self.kernels:
                 kernel.step(self.model)
 
             #Record current sample
-            for m in self.model.modules():
+            for k, m in self.model.named_modules():
                 if hasattr(m, "_value"):
-                    m._mcmc_samples[i,...] = m._value
+                    result_dict[k][i,...] = m._value
+
+        return result_dict
 
 
 class VI():

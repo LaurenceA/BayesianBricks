@@ -24,5 +24,5 @@ vi = VI(m)
 vi.fit(3*10**4)
 
 kernel = MHMC(m.rvs())
-chain = Chain(m, [kernel], 100000, warmup=10000)
-chain.run()
+chain = Chain(m, [kernel])
+result = chain.run(100000, warmup=10000)
