@@ -17,11 +17,11 @@ class RV(nn.Module):
     def __call__(self):
         return self._value
 
+    def log_prior(self):
+        return -0.5*(self._value**2).sum()
+
     #### VI
 
-    def vi_init(self):
-        self.vi_mean = nn.Parameter(t.randn(self.size))
-        self.vi_log_prec = nn.Parameter(t.Tensor(self.size).fill_(8.))
 
     def vi_log_variance(self):
         return F.logsigmoid(-self.vi_log_prec) # log(1 / (1+log_prec.exp()))
@@ -100,6 +100,102 @@ class Model(nn.Module):
                 result[k] = None
         return result
 
+def sum_all_except(x, ind_dims):
+    for dim in ind_dims:
+        assert 1 < x.size(dim)
+
+    sum_dims = set(range(len(x.size()))) - set(ind_dims)
+    return x.sum(dim=tuple(sum_dims), keepdim=True)
+
+class MCMC():
+    """
+    Assumes that the ratio of proposals forward and back is equal,
+    which is true for symmetric proposals, and HMC.
+
+    Critical technical detail:
+    the ind_dims, and log_like must be compatible with all log_priors.
+    """
+    def __init__(self, rvs, ind_dims=()):
+        self.rvs = list(rvs)
+        for rv in self.rvs:
+            assert isinstance(rv, RV)
+        self.ind_dims = ind_dims
+
+        self.init_proposal()
+
+    def init_proposal(self):
+        pass
+
+    def proposal(self):
+        raise NotImplementedError()
+
+    def log_prior(self):
+        total = 0.
+        for rv in self.rvs:
+            total += sum_all_except(rv.log_prior(), self.ind_dims)
+        return total
+
+
+    def step(self, model):
+        xs_prev = [rv._value.clone() for rv in self.rvs]
+        lp_prev = model() + self.log_prior()
+
+        self.proposal()
+
+        xs_next = [rv._value.clone() for rv in self.rvs]
+        lp_next = model() + self.log_prior()
+        
+        lp_diff = sum_all_except(lp_next - lp_prev, self.ind_dims)
+        accept_prob = lp_diff.exp()
+        accept_cond = t.rand(accept_prob.size()) < accept_prob
+
+        for i in range(len(self.rvs)):
+            new_value = t.where(
+                accept_cond,
+                xs_next[i],
+                xs_prev[i]
+            )
+            assert new_value.size() == self.rvs[i].size
+            self.rvs[i]._value = new_value
+
+class MHMC(MCMC):
+    def proposal(self):
+        for rv in self.rvs:
+            rv._value.add_(0.3*rv.vi_std()*t.randn(rv.size))
+            #rv._value.add_(0.03*t.randn(rv.size))
+
+
+class Chain():
+    """
+    Manages the recording of MCMC samples
+    """
+    def __init__(self, model, kernels, chain_length, warmup=0):
+        self.model = model
+        self.kernels = kernels
+        self.chain_length = chain_length
+        self.warmup = warmup
+
+        #Initialize recording buffers
+        model()
+        for m in self.model.modules():
+            if hasattr(m, "_value"):
+                m._mcmc_samples = t.zeros(t.Size([chain_length]) + m._value.size(), device="cpu")
+
+    def run(self):
+        for i in range(self.warmup):
+            for kernel in self.kernels:
+                kernel.step(self.model)
+
+        for i in range(self.chain_length):
+            for kernel in self.kernels:
+                kernel.step(self.model)
+
+            #Record current sample
+            for m in self.model.modules():
+                if hasattr(m, "_value"):
+                    m._mcmc_samples[i,...] = m._value
+
+
 class VI():
     """
     Wrapper class that actually runs VI
@@ -112,7 +208,8 @@ class VI():
 
     def vi_init(self):
         for rv in self.model.rvs():
-            rv.vi_init()
+            rv.vi_mean = nn.Parameter(t.randn(rv.size))
+            rv.vi_log_prec = nn.Parameter(t.Tensor(rv.size).fill_(8.))
 
     def fit_one_step(self):
         self.model.zero_grad()

@@ -1,3 +1,8 @@
+import os
+import sys
+home = os.environ["HOME"]
+sys.path.append(home + "/git/BayesianBricks")
+
 # -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
@@ -40,6 +45,7 @@ release = '[]'
 # ones.
 extensions = [
     'sphinx.ext.mathjax',
+    'sphinx.ext.autodoc',
 ]
 
 # Add any paths that contain templates here, relative to this directory.

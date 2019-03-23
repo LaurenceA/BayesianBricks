@@ -1,10 +1,10 @@
-from bb import RV, Model, VI, HMC
+from bb import RV, Model, VI, HMC, MCMC, MCMCKernel
 import torch as t
 
 from distributions import Normal, LogGamma, Gamma, Exponential, Beta
 from confidence import confidence#, Threshold
 
-t.set_default_tensor_type(t.cuda.FloatTensor)
+#t.set_default_tensor_type(t.cuda.FloatTensor)
 
 class Likelihood(Model):
     """
@@ -48,11 +48,17 @@ obs = like().sample()
 true_latents = like.dump()
 
 m = Joint(like, obs)
-print(m())
-m.refresh()
-vi = VI(m)
-vi.fit(3*10**4)
-inferred_latents = like.dump()
 
-hmc = HMC(m, 100, rate=3E-2, trajectory_length=3E-2)
-print(hmc.run())
+mcmckernel = MCMCKernel([like.obs1.z, like.obs2.z], ind_dims=[-2])
+mcmc = MCMC(m, [mcmckernel], 100)
+mcmc.run()
+
+
+#print(m())
+#m.refresh()
+#vi = VI(m)
+#vi.fit(3*10**4)
+#inferred_latents = like.dump()
+#
+#hmc = HMC(m, 100, rate=3E-2, trajectory_length=3E-2)
+#print(hmc.run())

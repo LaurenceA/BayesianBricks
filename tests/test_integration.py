@@ -40,3 +40,13 @@ class VI_Integration(TestCase):
 
         var_b = m.b.z.hmc_samples.var().item()
         self.assertTrue(between(var_b, 0.75*1E-4, 1.25E-4), "HMC variance of a was: " + str(var_b) + " should have been: " + str(0.0001))
+
+        kernel = MHMC(m.rvs())
+        chain = Chain(m, [kernel], 100000, warmup=10000)
+        chain.run()
+
+        var_a = m.a.z.hmc_samples.var().item()
+        self.assertTrue(between(var_a, 0.4, 0.6), "HMC variance of a was: " + str(var_a) + " should have been: " + str(0.5))
+
+        var_b = m.b.z.hmc_samples.var().item()
+        self.assertTrue(between(var_b, 0.75*1E-4, 1.25E-4), "HMC variance of a was: " + str(var_b) + " should have been: " + str(0.0001))

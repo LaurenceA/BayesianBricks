@@ -10,6 +10,11 @@ Welcome to BayesianBricks's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+.. autoclass:: bb.RV
+   :members:
+.. autoclass:: bb.Model
+   :members:
+
 
 
 Indices and tables
