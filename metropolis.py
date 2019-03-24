@@ -2,7 +2,7 @@ import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
 
-from vi import VI, VITensor
+from vi import VI
 from rv import RV
 from mcmc import MCMC
 

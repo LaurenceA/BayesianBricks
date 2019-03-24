@@ -16,6 +16,7 @@ class MCMC():
         self.rvs = list(rvs)
         for rv in self.rvs:
             assert isinstance(rv, RV)
+
         self.ind_shape = ind_shape
         self.ind_dims = [i for i in range(-len(ind_shape), 0) if 1 < ind_shape[i]] 
 
@@ -53,6 +54,10 @@ class MCMC():
         total = self.sum_non_ind(model())
         for rv in self.rvs:
             total += self.sum_non_ind(rv.log_prior())
+
+        for br_rv in model.branch_rvs():
+            if br_rv not in self.rvs:
+                total += self.sum_non_ind(br_rv.log_prior())
         return total
 
     def sum_non_ind(self, x):

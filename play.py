@@ -12,17 +12,17 @@ class DifferentScales(Model):
 
     def __call__(self):
         scale = t.Tensor([1., 0.1])
-        return t.distributions.Normal(self.a(), scale).log_prob(t.zeros(2))#.sum()
+        return t.distributions.Normal(self.a(), scale).log_prob(t.zeros(2))
 
 m = DifferentScales()
 
 vi = VI(m)
 vi.fit(3*10**4)
 
-kernel = HMC(m.rvs(), ind_shape=[2])
+kernel = HMC(m.all_rvs(), ind_shape=[2])
 chain = Chain(m, [kernel])
 result = chain.run(1000)
 
-#kernel = Metropolis(m.rvs(), vi=vi)
+#kernel = Metropolis(m.all_rvs(), vi=vi)
 #chain = Chain(m, [kernel])
 #result = chain.run(100000, warmup=10000)

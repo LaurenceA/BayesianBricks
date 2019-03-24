@@ -2,26 +2,26 @@ import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
 
+from vi import NormalVI
+
 class AbstractRV(nn.Module):
-    def __call__(self):
+    def vi(self):
+        raise NotImplementedError()
+
+    def sample(self):
+        self._value = self.dist().sample()
+        assert self.size == self._value.size()
+
+    def log_prior(self):
+        return self.dist().log_prob(self._value)
+
+    def forward(self):
         return self._value
 
-class RV(AbstractRV):
+class BrRV(AbstractRV):
     """
-    Call this directly
+    Never overload forward!  Can't take arguments (so as to encode)
     """
-    def __init__(self, size):
-        super().__init__()
-        self.size = t.Size(size)
-        self._value = t.randn(size)
-
-    def prior_sample(self):
-        self._value = t.randn(self.size)
-
-    def prior_log_prob(self):
-        return -0.5*(self._value**2)
-
-class NRRV(nn.Module):
     def __init__(self, size, **kwargs):
         super().__init__()
         self.size = size
@@ -35,27 +35,22 @@ class NRRV(nn.Module):
     def dist(self):
         return self._dist(**{k:unwrap(v) for k,v in self._kwargs.items()})
 
-    def prior_sample(self):
-        self._value = self.dist().sample()
-        assert self.size == self._value.size()
+class LeafRV(AbstractRV):
+    def dist(self):
+        return self._dist
 
-    def prior_log_prob(self):
-        return self.dist().log_prob(self._value)
-
-    def forward(self, **kwargs):
-        if self.reparam:
-            self._value   = self.dist(self.z._value, **self.kwargs())
-        else:
-            self.z._value = self.dist_(self._value, **self.kwargs())
-        return self._value
-
-
-class NormalRV(NNRV):
+class NormalRV(AbstractRV):
     _dist = t.distributions.Normal
 
     def vi(self):
         return NormalVI(self)
 
+class RV(NormalRV, LeafRV):
+    def __init__(self, size):
+        Model.__init__(self)
+        self.size = t.Size(size)
+        self._value = t.randn(size)
+        self._dist = t.distributions.Normal(t.zeros(()).expand(self.size), t.ones(()))
 
 
 class Model(nn.Module):
@@ -64,15 +59,27 @@ class Model(nn.Module):
     __init__ 
     __call__
     """
-    def rvs(self):
-        return (mod for mod in self.modules() if isinstance(mod, RV))
+    #def rvs(self):
+    #    return (mod for mod in self.modules() if isinstance(mod, RV))
+    
+    def all_rvs(self):
+        return (mod for mod in self.modules() if isinstance(mod, AbstractRV))
+
+    def branch_rvs(self):
+        return (mod for mod in self.modules() if isinstance(mod, BrRV))
+
+    def leaf_rvs(self):
+        return (mod for mod in self.modules() if isinstance(mod, LeaffRV))
+
+    def all_named_rvs(self):
+        return ((k, v) for k, v in self.named_modules() if isinstance(v, AbstractRV))
 
     def models(self):
         return (mod for mod in self.modules() if isinstance(mod, Model))
 
     def refresh(self):
-        for rv in self.rvs():
-            rv.randn()
+        for rv in self.all_rvs():
+            rv.sample()
 
     def dump(self):
         result = {}

@@ -1,7 +1,7 @@
 from bb import RV, Model, VI
 import torch as t
 
-from distributions import Normal, LogGamma, Gamma, Exponential, Beta
+from rdists import RNormal, RLogGamma, RGamma, RExponential, RBeta
 from confidence import confidence#, Threshold
 
 #t.set_default_tensor_type(t.cuda.FloatTensor)
@@ -13,10 +13,10 @@ class Likelihood(Model):
         super().__init__()
         self.N = contrast.size(0)
         self.T = contrast.size(1)
-        self.scale = Exponential((self.N, 1, 1), rate=1.)
-        self.obs1 = Normal((self.N, self.T, 1), loc= t.relu( contrast), scale=self.scale)
-        self.obs2 = Normal((self.N, self.T, 1), loc=-t.relu(-contrast), scale=self.scale)
-        self.beta = Beta((self.N, 1, 1), alpha=0.5, beta=0.5)
+        self.scale = RExponential((self.N, 1, 1), rate=1.)
+        self.obs1 = RNormal((self.N, self.T, 1), loc= t.relu( contrast), scale=self.scale)
+        self.obs2 = RNormal((self.N, self.T, 1), loc=-t.relu(-contrast), scale=self.scale)
+        self.beta = RBeta((self.N, 1, 1), alpha=0.5, beta=0.5)
 
     def forward(self):
 

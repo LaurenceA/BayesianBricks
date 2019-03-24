@@ -2,8 +2,6 @@ import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
 
-from rv import RV
-
 #class VITensor(nn.Module):
 class NormalVI(nn.Module):
     def __init__(self, rv):
@@ -31,7 +29,7 @@ class NormalVI(nn.Module):
         scale = (0.5*log_var).exp()
         self.rv._value = self.mean + scale * z
 
-        logp = - 0.5 * (self.rv._value**2).sum()
+        logp = self.rv.log_prior().sum()
         logq = - 0.5 * (z**2 + log_var).sum()
         return logq - logp
 
@@ -44,11 +42,10 @@ class VI(nn.Module):
         self.model = model
         self.vits = []
 
-        for k, v in self.model.named_modules():
-            if isinstance(v, RV):
-                vit = VITensor(v)
-                self.vits.append(vit)
-                self.add_module("_"+k.replace(".", "_"), vit)
+        for k, v in self.model.all_named_rvs():
+            vit = v.vi()
+            self.vits.append(vit)
+            self.add_module("_"+k.replace(".", "_"), vit)
 
         self.opt = opt(self.parameters(), **opt_kwargs)
 

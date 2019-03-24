@@ -1,27 +1,16 @@
-
-
-Reparameterised and non-reparameterised distributions:
-  Encode dependencies explicitly using module tree.
-  Below a non-reparameterised distribution, everything is the same.
-  Above a non-reparameterised distribution, everything is different!
-  VI:
-    Compute summed lp: easy
-    Treat it as reparameterised: easy
-  MCMC:
-    To sample a non-reparameterised guy, do MCMC, with a prior proposal (their use should be minimal)!
-    To sample reparameterised guys,
-    Go forward from the rv's we're sampling, to find the non-reparameterised distributions which give log-probs
-    But we can't go forward, we can only go backwards.
-    Go backwards through tree, collecting data/non-reparam nodes.
-
 TODOs:
-  Reparameterised and non-reparameterised distributions
-  Test independent accept/reject steps
-  Metropolis: step-size adaptation
-  Allow for reduced-rank mass matricies
-  Metropolis without having to compute prior ratio:
-    Langevin (full differential eq. solution)?
-    Single step HMC?
+  Rename:
+    log_prior -> log_prob
+  Test:
+    independent accept/reject steps
+    BrRV
+  Metropolis:
+    step-size adaptation
+    avoid RV log-probability ratios using something like Langevin/single-step HMC
+  VI:
+    low-rank mass matrix 
+  Unify:
+    observations and non-reparameterised RV
   Docs
 
   examples:
