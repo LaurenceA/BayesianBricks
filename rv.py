@@ -46,3 +46,30 @@ class RV(nn.Module):
         self.hmc_p.normal_(0., 1.)
         self.hmc_p.mul_(self.hmc_sqrt_mass)
         self._value.data.copy_(self.hmc_x_chain)
+
+
+class Model(nn.Module):
+    """
+    Overload: 
+    __init__ 
+    __call__
+    """
+    def rvs(self):
+        return (mod for mod in self.modules() if isinstance(mod, RV))
+
+    def models(self):
+        return (mod for mod in self.modules() if isinstance(mod, Model))
+
+    def refresh(self):
+        for rv in self.rvs():
+            rv.randn()
+
+    def dump(self):
+        result = {}
+        for k, v in self.named_modules():
+            if hasattr(v, "_value"):
+                result[k] = v._value
+            else:
+                result[k] = None
+        return result
+

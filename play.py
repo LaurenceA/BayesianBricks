@@ -1,5 +1,5 @@
 import torch as t
-from bb import RV, Model, VI, HMC, MHMC, Chain
+from bb import RV, Model, VI, HMC, Metropolis, Chain
 from distributions import Normal
 
 def between(x, a, b):
@@ -23,6 +23,6 @@ m = DifferentScales()
 vi = VI(m)
 vi.fit(3*10**4)
 
-#kernel = MHMC(m.rvs())
-#chain = Chain(m, [kernel])
-#result = chain.run(100000, warmup=10000)
+kernel = Metropolis(m.rvs(), vi=vi)
+chain = Chain(m, [kernel])
+result = chain.run(100000, warmup=10000)

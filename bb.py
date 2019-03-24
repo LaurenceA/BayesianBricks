@@ -3,33 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from vi import VI, VITensor
-from rv import RV
+from rv import RV, Model
 
-
-class Model(nn.Module):
-    """
-    Overload: 
-    __init__ 
-    __call__
-    """
-    def rvs(self):
-        return (mod for mod in self.modules() if isinstance(mod, RV))
-
-    def models(self):
-        return (mod for mod in self.modules() if isinstance(mod, Model))
-
-    def refresh(self):
-        for rv in self.rvs():
-            rv.randn()
-
-    def dump(self):
-        result = {}
-        for k, v in self.named_modules():
-            if hasattr(v, "_value"):
-                result[k] = v._value
-            else:
-                result[k] = None
-        return result
 
 def sum_all_except(x, ind_dims):
     for dim in ind_dims:
@@ -46,16 +21,16 @@ class MCMC():
     Critical technical detail:
     the ind_dims, and log_like must be compatible with all log_priors.
     """
-    def __init__(self, rvs, ind_dims=()):
+    def __init__(self, rvs, ind_dims=(), vi=None):
         self.rvs = list(rvs)
         for rv in self.rvs:
             assert isinstance(rv, RV)
         self.ind_dims = ind_dims
 
-        self.init_proposal()
+        self.init_proposal(vi)
 
-    def init_proposal(self):
-        pass
+    def init_proposal(self, vi=None):
+        raise NotImplementedError()
 
     def proposal(self):
         raise NotImplementedError()
@@ -89,10 +64,27 @@ class MCMC():
             assert new_value.size() == self.rvs[i].size
             self.rvs[i]._value = new_value
 
-class MHMC(MCMC):
+class MetropolisTensor():
+    def __init__(self, rv, vi):
+        self.rv = rv
+
+        if vi is not None:
+            for vit in vi.vits:
+                if rv is vit.rv:
+                    self.proposal_scale = 0.3*vit.std()
+                    break
+
+        if not hasattr(self, "proposal_scale"):
+            self.proposal_scale = 0.01
+
+
+class Metropolis(MCMC):
+    def init_proposal(self, vi=None):
+        self.mcmc_tensors = [MetropolisTensor(rv, vi) for rv in self.rvs]
+
     def proposal(self):
-        for rv in self.rvs:
-            rv._value.add_(0.3*rv.vi_std()*t.randn(rv.size))
+        for mt in self.mcmc_tensors:
+            mt.rv._value.add_(mt.proposal_scale*t.randn(mt.rv.size))
 
 
 class Chain():

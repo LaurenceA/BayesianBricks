@@ -1,7 +1,8 @@
 TODOs:
   allow for reduced-rank mass matricies
-  allow minibatching 
   docs
+  incorporate HMC into VI
+  step-size adaptation
 
   examples:
     neural firing
