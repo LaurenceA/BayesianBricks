@@ -58,8 +58,8 @@ class HMC(MCMC):
 
     def momentum_step(self, model, rate):
         self.zero_grad()
-        lp = model().sum()
-        lp.backward()
+        lp = model()
+        lp.sum().backward()
         for mt in self.mcmc_tensors:
             mt.momentum_step(rate)
 

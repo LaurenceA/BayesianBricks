@@ -208,57 +208,57 @@ class Dist(Model):
         self._value = val
         return val
 
-class Normal(Dist):
+class RNormal(Dist):
     dist = staticmethod(normal)
     
-class LogNormal(Dist):
+class RLogNormal(Dist):
     dist = staticmethod(lognormal)
 
-class Uniform(Dist):
+class RUniform(Dist):
     dist = staticmethod(uniform)
 
-class Exponential(Dist):
+class RExponential(Dist):
     dist = staticmethod(exponential)
 
-class Laplace(Dist):
+class RLaplace(Dist):
     dist = staticmethod(laplace)
 
-class Gumbel(Dist):
+class RGumbel(Dist):
     dist = staticmethod(gumbel)
 
-class Logistic(Dist):
+class RLogistic(Dist):
     dist = staticmethod(gumbel)
 
-class Delta(Dist):
+class RDelta(Dist):
     dist = staticmethod(delta)
 
-class Pareto(Dist):
+class RPareto(Dist):
     dist = staticmethod(pareto)
 
-class Gamma(Dist):
+class RGamma(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(gamma)
 
-class LogGamma(Dist):
+class RLogGamma(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(loggamma)
 
-class LogInvGamma(Dist):
+class RLogInvGamma(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(loginvgamma)
 
-class InvGamma(Dist):
+class RInvGamma(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(invgamma)
 
-class LogDirichlet(Dist):
+class RLogDirichlet(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(logdirichlet)
 
-class Dirichlet(Dist):
+class RDirichlet(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(dirichlet)
 
-class Beta(Dist):
+class RBeta(Dist):
     random_numbers = t.Size([2, gamma_K+1])
     dist = staticmethod(beta)

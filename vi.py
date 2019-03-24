@@ -55,7 +55,7 @@ class VI(nn.Module):
     def fit_one_step(self):
         self.zero_grad()
         kl = self.rsample_kl()
-        elbo = self.model() - kl
+        elbo = self.model().sum() - kl
         loss = -elbo
         loss.backward()
         self.opt.step()

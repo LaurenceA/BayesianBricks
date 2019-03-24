@@ -1,4 +1,4 @@
-from bb import RV, Model, VI, HMC, MCMC, MCMCKernel
+from bb import RV, Model, VI
 import torch as t
 
 from distributions import Normal, LogGamma, Gamma, Exponential, Beta
@@ -46,19 +46,11 @@ contrast = t.randn(10, 5000, 1)
 like = Likelihood(contrast)
 obs = like().sample()
 true_latents = like.dump()
-
 m = Joint(like, obs)
+m.refresh()
 
-mcmckernel = MCMCKernel([like.obs1.z, like.obs2.z], ind_dims=[-2])
-mcmc = MCMC(m, [mcmckernel], 100)
-mcmc.run()
+vi = VI(m)
+vi.fit(3*10**4)
+inferred_latents = like.dump()
 
 
-#print(m())
-#m.refresh()
-#vi = VI(m)
-#vi.fit(3*10**4)
-#inferred_latents = like.dump()
-#
-#hmc = HMC(m, 100, rate=3E-2, trajectory_length=3E-2)
-#print(hmc.run())

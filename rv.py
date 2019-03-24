@@ -18,7 +18,7 @@ class RV(nn.Module):
         return self._value
 
     def log_prior(self):
-        return -0.5*(self._value**2).sum()
+        return -0.5*(self._value**2)
 
 class Model(nn.Module):
     """
@@ -44,4 +44,3 @@ class Model(nn.Module):
             else:
                 result[k] = None
         return result
-

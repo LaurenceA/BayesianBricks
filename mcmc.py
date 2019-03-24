@@ -12,11 +12,12 @@ class MCMC():
     Critical technical detail:
     the ind_dims, and log_like must be compatible with all log_priors.
     """
-    def __init__(self, rvs=None, ind_dims=(), vi=None):
+    def __init__(self, rvs=None, ind_shape=(), vi=None):
         self.rvs = list(rvs)
         for rv in self.rvs:
             assert isinstance(rv, RV)
-        self.ind_dims = ind_dims
+        self.ind_shape = ind_shape
+        self.ind_dims = [i for i in range(-len(ind_shape), 0) if 1 < ind_shape[i]] 
 
         self.init_proposal(vi)
 
@@ -39,9 +40,6 @@ class MCMC():
         accept_prob = lp_diff.exp()
         accept_cond = t.rand(accept_prob.size()) < accept_prob
 
-        #for i in range(len(self.rvs)):
-        #    if not accept_cond:
-        #        self.rvs[i]._value = xs_prev[i]
         for i in range(len(self.rvs)):
             new_value = t.where(
                 accept_cond.detach(),
@@ -59,9 +57,9 @@ class MCMC():
 
     def sum_non_ind(self, x):
         for dim in self.ind_dims:
-            assert 1 < x.size(dim)
+            assert self.ind_shape[dim] == x.size(dim)
 
-        sum_dims = set(range(len(x.size()))) - set(self.ind_dims)
+        sum_dims = set(range(-len(x.size()), 0)) - set(self.ind_dims)
         return x.sum(dim=tuple(sum_dims), keepdim=True)
 
 
