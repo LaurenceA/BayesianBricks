@@ -67,6 +67,10 @@ class VI(nn.Module):
             if i % 1000 == 0:
                 print(elbo.item())
 
+        #### Detach rv._value from VI computation.
+        for vit in self.vits:
+            vit.rv._value.detach_()
+
     def rsample_kl(self):
         total = 0.
         for vit in self.vits:

@@ -11,7 +11,7 @@ from metropolis import Metropolis, MetropolisTensor
 class HMCTensor():
     def __init__(self, rv, vi):
         self.rv = rv
-        m.p = t.zeros(m.size)
+        self.p = t.zeros(rv.size)
 
         if vi is not None:
             for vit in vi.vits:
@@ -21,8 +21,8 @@ class HMCTensor():
                     break
 
         if not hasattr(self, "inv_mass"):
-            self.inv_mass = 1.
-            self.sqrt_mass = 1.
+            self.inv_mass = t.ones(())
+            self.sqrt_mass = t.ones(())
 
     def momentum_step(self, rate):
         self.p.add_( rate, self.rv._value.grad)
@@ -35,10 +35,10 @@ class HMCTensor():
         if self.rv._value.grad is not None:
             self.rv._value.grad.fill_(0.)
 
-    def log_prior_xp(self):
-        lp_x = -0.5*(self.rv._value**2).sum()
-        lp_p = -0.5*(self.inv_mass*self.p**2).sum()
-        return lp_x + lp_p
+#    def log_prior_xp(self):
+#        lp_x = -0.5*(self.rv._value**2).sum()
+#        lp_p = -0.5*(self.inv_mass*self.p**2).sum()
+#        return lp_x + lp_p
 
     def step_initialize(self):
         self.p.normal_(0., 1.)
@@ -56,13 +56,12 @@ class HMC(MCMC):
         for mt in self.mcmc_tensors:
             mt.position_step(rate)
 
-    def momentum_step(self, rate):
+    def momentum_step(self, model, rate):
         self.zero_grad()
-        lp = self.model()
+        lp = model().sum()
         lp.backward()
-        for mt in self.mcmc_tensors():
+        for mt in self.mcmc_tensors:
             mt.momentum_step(rate)
-        return lp
 
     def zero_grad(self):
         for mt in self.mcmc_tensors:
@@ -70,29 +69,27 @@ class HMC(MCMC):
 
     def step_initialize(self):
         for mt in self.mcmc_tensors:
-            mt.hmc_step_initialize()
+            mt.step_initialize()
 
-    def log_prior(self):
+    def log_prior_p(self):
         total = 0.
         for mt in self.mcmc_tensors:
-            total += mt.log_prior_xp()
+            total += self.sum_non_ind(-0.5*(mt.inv_mass*mt.p**2))
         return total
 
-    def proposal(self):
+    def proposal(self, model):
         self.step_initialize()
 
-        lp_prior_xp = self.log_prior_xp()
-        lp_like     = self.momentum_step(0.5*self.rate)
-        lp_init     = lp_prior_xp + lp_like
+        lp_mod_init = self.log_prior_p()
+        self.momentum_step(model, 0.5*self.rate)
         
         # Integration
         for _ in range(self.steps-1):
             self.position_step(self.rate)
-            self.momentum_step(self.rate)
+            self.momentum_step(model, self.rate)
         self.position_step(self.rate)
 
-        lp_like     = self.momentum_step(0.5*self.rate)
-        lp_prior_xp = self.log_prior_xp()
-        lp_prop     = lp_prior_xp + lp_like
+        self.momentum_step(model, 0.5*self.rate)
+        lp_mod_prop = self.log_prior_p()
 
-        return lp_prop - lp_init
+        return lp_mod_prop - lp_mod_init

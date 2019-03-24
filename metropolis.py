@@ -24,7 +24,7 @@ class Metropolis(MCMC):
     def init_proposal(self, vi):
         self.mcmc_tensors = [MetropolisTensor(rv, vi) for rv in self.rvs]
 
-    def proposal(self):
+    def proposal(self, model):
         for mt in self.mcmc_tensors:
             mt.rv._value.add_(mt.proposal_scale*t.randn(mt.rv.size))
         return 0.

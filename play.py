@@ -23,6 +23,10 @@ m = DifferentScales()
 vi = VI(m)
 vi.fit(3*10**4)
 
-kernel = Metropolis(m.rvs(), vi=vi)
+kernel = HMC(m.rvs())
 chain = Chain(m, [kernel])
-result = chain.run(100000, warmup=10000)
+result = chain.run(1000)
+
+#kernel = Metropolis(m.rvs(), vi=vi)
+#chain = Chain(m, [kernel])
+#result = chain.run(100000, warmup=10000)

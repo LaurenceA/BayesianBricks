@@ -4,13 +4,6 @@ import torch.nn.functional as F
 
 from rv import RV, Model
 
-def sum_all_except(x, ind_dims):
-    for dim in ind_dims:
-        assert 1 < x.size(dim)
-
-    sum_dims = set(range(len(x.size()))) - set(ind_dims)
-    return x.sum(dim=tuple(sum_dims), keepdim=True)
-
 class MCMC():
     """
     Assumes that the ratio of proposals forward and back is equal,
@@ -19,7 +12,7 @@ class MCMC():
     Critical technical detail:
     the ind_dims, and log_like must be compatible with all log_priors.
     """
-    def __init__(self, rvs, ind_dims=(), vi=None):
+    def __init__(self, rvs=None, ind_dims=(), vi=None):
         self.rvs = list(rvs)
         for rv in self.rvs:
             assert isinstance(rv, RV)
@@ -27,39 +20,50 @@ class MCMC():
 
         self.init_proposal(vi)
 
-    def init_proposal(self, vi=None):
+    def init_proposal(self, vi):
         raise NotImplementedError()
 
-    def proposal(self):
+    def proposal(self, model):
         raise NotImplementedError()
-
-    def log_prior(self):
-        total = 0.
-        for rv in self.rvs:
-            total += sum_all_except(rv.log_prior(), self.ind_dims)
-        return total
 
     def step(self, model):
         xs_prev = [rv._value.clone() for rv in self.rvs]
-        lp_prev = model() + self.log_prior()
+        lp_prev = self.log_prob(model)
 
-        lp_mod = self.proposal()
+        lp_mod = self.proposal(model)
 
         xs_next = [rv._value.clone() for rv in self.rvs]
-        lp_next = model() + self.log_prior()
+        lp_next = self.log_prob(model)
         
-        lp_diff = sum_all_except(lp_next - lp_prev + lp_mod, self.ind_dims)
+        lp_diff = lp_next - lp_prev + lp_mod
         accept_prob = lp_diff.exp()
         accept_cond = t.rand(accept_prob.size()) < accept_prob
 
+        #for i in range(len(self.rvs)):
+        #    if not accept_cond:
+        #        self.rvs[i]._value = xs_prev[i]
         for i in range(len(self.rvs)):
             new_value = t.where(
-                accept_cond,
-                xs_next[i],
-                xs_prev[i]
+                accept_cond.detach(),
+                xs_next[i].detach(),
+                xs_prev[i].detach()
             )
             assert new_value.size() == self.rvs[i].size
             self.rvs[i]._value = new_value
+
+    def log_prob(self, model):
+        total = self.sum_non_ind(model())
+        for rv in self.rvs:
+            total += self.sum_non_ind(rv.log_prior())
+        return total
+
+    def sum_non_ind(self, x):
+        for dim in self.ind_dims:
+            assert 1 < x.size(dim)
+
+        sum_dims = set(range(len(x.size()))) - set(self.ind_dims)
+        return x.sum(dim=tuple(sum_dims), keepdim=True)
+
 
 
 class Chain():
