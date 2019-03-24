@@ -183,7 +183,7 @@ def unwrap(x):
     else:
         return x
 
-class Dist(Model):
+class RDist(Model):
     """
     Primarily, this class functions as a container for randomness required for distributions.
     """
@@ -208,57 +208,57 @@ class Dist(Model):
         self._value = val
         return val
 
-class RNormal(Dist):
+class RNormal(RDist):
     dist = staticmethod(normal)
     
-class RLogNormal(Dist):
+class RLogNormal(RDist):
     dist = staticmethod(lognormal)
 
-class RUniform(Dist):
+class RUniform(RDist):
     dist = staticmethod(uniform)
 
-class RExponential(Dist):
+class RExponential(RDist):
     dist = staticmethod(exponential)
 
-class RLaplace(Dist):
+class RLaplace(RDist):
     dist = staticmethod(laplace)
 
-class RGumbel(Dist):
+class RGumbel(RDist):
     dist = staticmethod(gumbel)
 
-class RLogistic(Dist):
+class RLogistic(RDist):
     dist = staticmethod(gumbel)
 
-class RDelta(Dist):
+class RDelta(RDist):
     dist = staticmethod(delta)
 
-class RPareto(Dist):
+class RPareto(RDist):
     dist = staticmethod(pareto)
 
-class RGamma(Dist):
+class RGamma(RDist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(gamma)
 
-class RLogGamma(Dist):
+class RLogGamma(RDist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(loggamma)
 
-class RLogInvGamma(Dist):
+class RLogInvGamma(RDist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(loginvgamma)
 
-class RInvGamma(Dist):
+class RInvGamma(RDist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(invgamma)
 
-class RLogDirichlet(Dist):
+class RLogDirichlet(RDist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(logdirichlet)
 
-class RDirichlet(Dist):
+class RDirichlet(RDist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(dirichlet)
 
-class RBeta(Dist):
+class RBeta(RDist):
     random_numbers = t.Size([2, gamma_K+1])
     dist = staticmethod(beta)

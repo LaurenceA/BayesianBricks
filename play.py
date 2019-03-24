@@ -1,6 +1,6 @@
 import torch as t
 from bb import RV, Model, VI, HMC, Metropolis, Chain
-from distributions import RNormal
+from rdists import RNormal
 
 def between(x, a, b):
     return (a < x) and (x < b)
