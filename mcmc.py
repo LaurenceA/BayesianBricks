@@ -65,7 +65,10 @@ class MCMC():
             assert self.ind_shape[dim] == x.size(dim)
 
         sum_dims = set(range(-len(x.size()), 0)) - set(self.ind_dims)
-        result = x.sum(dim=tuple(sum_dims), keepdim=True)
+        if 0 != len(sum_dims):
+            result = x.sum(dim=tuple(sum_dims), keepdim=True)
+        else:
+            result = x
 
         #### Remove singleton dimensions at the front
         while True:

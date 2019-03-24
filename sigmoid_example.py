@@ -5,7 +5,7 @@ from rv import NonReparamNormal
 from distributions import Normal, LogGamma, Gamma, Exponential
 from bb import Metropolis, Chain
 
-#t.set_default_tensor_type(t.cuda.FloatTensor)
+t.set_default_tensor_type(t.cuda.FloatTensor)
 
 class Likelihood(Model):
     """
@@ -41,9 +41,11 @@ true_latents = like.dump()
 m = Joint(like, obs)
 print(m().sum())
 m.sample()
-#vi = VI(m)
-#vi.fit(10**5)
-#inferred_latents = like.dump()
+print(m().sum())
+vi = VI(m)
+vi.fit(3*10**4)
+inferred_latents = like.dump()
+print(m().sum())
 
 #hmc = HMC(m, 5000)
 #hmc.run()
@@ -51,7 +53,7 @@ m.sample()
 
 
 
-k1 = Metropolis([like.observation.z], ind_shape=(10, 1000))
-k2 = Metropolis([like.scale.z], ind_shape=(10, 1))
+k1 = Metropolis([like.observation.z], ind_shape=(10, 1000))#, vi=vi)
+k2 = Metropolis([like.scale.z], ind_shape=(10, 1))#, vi=vi)
 chain = Chain(m, [k1, k2])
-result = chain.run(10000, warmup=10000)
+result = chain.run(10000)
