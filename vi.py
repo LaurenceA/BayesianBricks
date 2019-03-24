@@ -4,8 +4,8 @@ import torch.nn.functional as F
 
 from rv import RV
 
-
-class VITensor(nn.Module):
+#class VITensor(nn.Module):
+class NormalVI(nn.Module):
     def __init__(self, rv):
         super().__init__()
         self.rv = rv

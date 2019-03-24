@@ -2,7 +2,11 @@ import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
 
-class RV(nn.Module):
+class AbstractRV(nn.Module):
+    def __call__(self):
+        return self._value
+
+class RV(AbstractRV):
     """
     Call this directly
     """
@@ -11,14 +15,48 @@ class RV(nn.Module):
         self.size = t.Size(size)
         self._value = t.randn(size)
 
-    def randn(self):
+    def prior_sample(self):
         self._value = t.randn(self.size)
 
-    def __call__(self):
+    def prior_log_prob(self):
+        return -0.5*(self._value**2)
+
+class NRRV(nn.Module):
+    def __init__(self, size, **kwargs):
+        super().__init__()
+        self.size = size
+        self._kwargs = kwargs
+
+        # for easy access in future, and to ensure that they are recorded as modules,
+        # record keyword arguments as fields
+        for k, v in _kwargs.items():
+            setattr(self, k, v)
+
+    def dist(self):
+        return self._dist(**{k:unwrap(v) for k,v in self._kwargs.items()})
+
+    def prior_sample(self):
+        self._value = self.dist().sample()
+        assert self.size == self._value.size()
+
+    def prior_log_prob(self):
+        return self.dist().log_prob(self._value)
+
+    def forward(self, **kwargs):
+        if self.reparam:
+            self._value   = self.dist(self.z._value, **self.kwargs())
+        else:
+            self.z._value = self.dist_(self._value, **self.kwargs())
         return self._value
 
-    def log_prior(self):
-        return -0.5*(self._value**2)
+
+class NormalRV(NNRV):
+    _dist = t.distributions.Normal
+
+    def vi(self):
+        return NormalVI(self)
+
+
 
 class Model(nn.Module):
     """

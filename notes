@@ -1,14 +1,18 @@
+
+
 Reparameterised and non-reparameterised distributions:
   Encode dependencies explicitly using module tree.
   Below a non-reparameterised distribution, everything is the same.
   Above a non-reparameterised distribution, everything is different!
   VI:
     Compute summed lp: easy
+    Treat it as reparameterised: easy
   MCMC:
+    To sample a non-reparameterised guy, do MCMC, with a prior proposal (their use should be minimal)!
+    To sample reparameterised guys,
     Go forward from the rv's we're sampling, to find the non-reparameterised distributions which give log-probs
     But we can't go forward, we can only go backwards.
-    For each node in tree:
-      mark it with the downstream log_probs (including data).  If 
+    Go backwards through tree, collecting data/non-reparam nodes.
 
 TODOs:
   Reparameterised and non-reparameterised distributions
