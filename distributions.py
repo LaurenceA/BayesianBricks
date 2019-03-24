@@ -173,17 +173,9 @@ def trans(z, dist):
     """
     return dist.icdf(cdf(z))
 
-from bb import RV, Model
+from rv import RV, Model, unwrap
 
-def unwrap(x):
-    if isinstance(x, RV) or isinstance(x, Model):
-        return x()
-    if isinstance(x, float):
-        return t.ones(())*x
-    else:
-        return x
-
-class RDist(Model):
+class Dist(Model):
     """
     Primarily, this class functions as a container for randomness required for distributions.
     """
@@ -208,57 +200,57 @@ class RDist(Model):
         self._value = val
         return val
 
-class RNormal(RDist):
+class Normal(Dist):
     dist = staticmethod(normal)
     
-class RLogNormal(RDist):
+class LogNormal(Dist):
     dist = staticmethod(lognormal)
 
-class RUniform(RDist):
+class Uniform(Dist):
     dist = staticmethod(uniform)
 
-class RExponential(RDist):
+class Exponential(Dist):
     dist = staticmethod(exponential)
 
-class RLaplace(RDist):
+class Laplace(Dist):
     dist = staticmethod(laplace)
 
-class RGumbel(RDist):
+class Gumbel(Dist):
     dist = staticmethod(gumbel)
 
-class RLogistic(RDist):
+class Logistic(Dist):
     dist = staticmethod(gumbel)
 
-class RDelta(RDist):
+class Delta(Dist):
     dist = staticmethod(delta)
 
-class RPareto(RDist):
+class Pareto(Dist):
     dist = staticmethod(pareto)
 
-class RGamma(RDist):
+class Gamma(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(gamma)
 
-class RLogGamma(RDist):
+class LogGamma(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(loggamma)
 
-class RLogInvGamma(RDist):
+class LogInvGamma(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(loginvgamma)
 
-class RInvGamma(RDist):
+class InvGamma(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(invgamma)
 
-class RLogDirichlet(RDist):
+class LogDirichlet(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(logdirichlet)
 
-class RDirichlet(RDist):
+class Dirichlet(Dist):
     random_numbers = t.Size([gamma_K+1])
     dist = staticmethod(dirichlet)
 
-class RBeta(RDist):
+class Beta(Dist):
     random_numbers = t.Size([2, gamma_K+1])
     dist = staticmethod(beta)

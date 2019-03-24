@@ -8,7 +8,7 @@ class NormalVI(nn.Module):
         super().__init__()
         self.rv = rv
         self.mean = nn.Parameter(t.randn(rv.size))
-        self.log_prec = nn.Parameter(t.Tensor(rv.size).fill_(8.))
+        self.log_prec = nn.Parameter(8*t.ones(rv.size))
         
     def log_variance(self):
         return F.logsigmoid(-self.log_prec) # log(1 / (1+log_prec.exp()))

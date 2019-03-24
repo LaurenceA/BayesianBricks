@@ -17,7 +17,7 @@ class MetropolisTensor():
                     break
 
         if not hasattr(self, "proposal_scale"):
-            self.proposal_scale = 0.01
+            self.proposal_scale = 0.1
 
 
 class Metropolis(MCMC):

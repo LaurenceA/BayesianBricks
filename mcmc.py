@@ -2,7 +2,7 @@ import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
 
-from rv import RV, Model
+from rv import AbstractRV, Model
 
 class MCMC():
     """
@@ -15,7 +15,7 @@ class MCMC():
     def __init__(self, rvs=None, ind_shape=(), vi=None):
         self.rvs = list(rvs)
         for rv in self.rvs:
-            assert isinstance(rv, RV)
+            assert isinstance(rv, AbstractRV)
 
         self.ind_shape = ind_shape
         self.ind_dims = [i for i in range(-len(ind_shape), 0) if 1 < ind_shape[i]] 
@@ -53,11 +53,11 @@ class MCMC():
     def log_prob(self, model):
         total = self.sum_non_ind(model())
         for rv in self.rvs:
-            total += self.sum_non_ind(rv.log_prior())
+            total = total + self.sum_non_ind(rv.log_prior())
 
         for br_rv in model.branch_rvs():
             if br_rv not in self.rvs:
-                total += self.sum_non_ind(br_rv.log_prior())
+                total = total + self.sum_non_ind(br_rv.log_prior())
         return total
 
     def sum_non_ind(self, x):
@@ -65,7 +65,15 @@ class MCMC():
             assert self.ind_shape[dim] == x.size(dim)
 
         sum_dims = set(range(-len(x.size()), 0)) - set(self.ind_dims)
-        return x.sum(dim=tuple(sum_dims), keepdim=True)
+        result = x.sum(dim=tuple(sum_dims), keepdim=True)
+
+        #### Remove singleton dimensions at the front
+        while True:
+            if (0 != len(result.size())) and (1 == result.size(0)):
+                result.squeeze_(0)
+            else:
+                break
+        return result
 
 
 

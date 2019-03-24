@@ -18,6 +18,15 @@ class AbstractRV(nn.Module):
     def forward(self):
         return self._value
 
+def unwrap(x):
+    if isinstance(x, RV) or isinstance(x, Model):
+        return x()
+    if isinstance(x, float):
+        return t.ones(())*x
+    else:
+        return x
+
+
 class BrRV(AbstractRV):
     """
     Never overload forward!  Can't take arguments (so as to encode)
@@ -25,15 +34,17 @@ class BrRV(AbstractRV):
     def __init__(self, size, **kwargs):
         super().__init__()
         self.size = size
-        self._kwargs = kwargs
+        self.kwargs = kwargs
 
         # for easy access in future, and to ensure that they are recorded as modules,
         # record keyword arguments as fields
-        for k, v in _kwargs.items():
+        for k, v in self.kwargs.items():
             setattr(self, k, v)
 
+        self.sample()
+
     def dist(self):
-        return self._dist(**{k:unwrap(v) for k,v in self._kwargs.items()})
+        return self._dist(**{k:unwrap(v).expand(self.size) for k,v in self.kwargs.items()})
 
 class LeafRV(AbstractRV):
     def dist(self):
@@ -44,6 +55,9 @@ class NormalRV(AbstractRV):
 
     def vi(self):
         return NormalVI(self)
+
+class NonReparamNormal(NormalRV, BrRV):
+    pass
 
 class RV(NormalRV, LeafRV):
     def __init__(self, size):
@@ -77,7 +91,7 @@ class Model(nn.Module):
     def models(self):
         return (mod for mod in self.modules() if isinstance(mod, Model))
 
-    def refresh(self):
+    def sample(self):
         for rv in self.all_rvs():
             rv.sample()
 

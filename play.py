@@ -1,6 +1,6 @@
 import torch as t
 from bb import RV, Model, VI, HMC, Metropolis, Chain
-from rdists import RNormal
+from distributions import Normal
 
 def between(x, a, b):
     return (a < x) and (x < b)
@@ -8,7 +8,7 @@ def between(x, a, b):
 class DifferentScales(Model):
     def __init__(self):
         super().__init__()
-        self.a = RNormal((2,), loc=t.zeros(()), scale=t.ones(()))
+        self.a = Normal((2,), loc=t.zeros(()), scale=t.ones(()))
 
     def __call__(self):
         scale = t.Tensor([1., 0.1])
