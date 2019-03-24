@@ -39,17 +39,16 @@ class MCMC():
             total += sum_all_except(rv.log_prior(), self.ind_dims)
         return total
 
-
     def step(self, model):
         xs_prev = [rv._value.clone() for rv in self.rvs]
         lp_prev = model() + self.log_prior()
 
-        self.proposal()
+        lp_mod = self.proposal()
 
         xs_next = [rv._value.clone() for rv in self.rvs]
         lp_next = model() + self.log_prior()
         
-        lp_diff = sum_all_except(lp_next - lp_prev, self.ind_dims)
+        lp_diff = sum_all_except(lp_next - lp_prev + lp_mod, self.ind_dims)
         accept_prob = lp_diff.exp()
         accept_cond = t.rand(accept_prob.size()) < accept_prob
 
