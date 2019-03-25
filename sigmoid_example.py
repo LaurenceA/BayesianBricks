@@ -2,8 +2,9 @@ from bb import RV, Model, VI, HMC
 import torch as t
 
 from rv import NonReparamNormal
-from distributions import Normal, LogGamma, Gamma, Exponential
+from rdists import RNormal, RExponential
 from bb import Metropolis, Chain
+from rv import Bernoulli
 
 t.set_default_tensor_type(t.cuda.FloatTensor)
 
@@ -14,8 +15,8 @@ class Likelihood(Model):
         super().__init__()
         self.N = contrast.size(0)
         self.T = contrast.size(1)
-        self.scale = Exponential((self.N, 1), rate=1.)
-        self.observation = Normal((self.N, self.T), loc=contrast, scale=self.scale)
+        self.scale = RExponential((self.N, 1), rate=1.)
+        self.observation = RNormal((self.N, self.T), loc=contrast, scale=self.scale)
 
     def forward(self):
         return t.distributions.Bernoulli(logits=10*self.observation())
@@ -31,6 +32,7 @@ class Joint(Model):
 
     def forward(self):
         return self.likelihood().log_prob(obs)
+
 
 
 contrast = t.randn(10, 1000)

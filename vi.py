@@ -40,21 +40,21 @@ class VI(nn.Module):
     def __init__(self, model, opt=t.optim.Adam, opt_kwargs={}):
         super().__init__()
         self.model = model
-        self.vits = []
+        assert self.model.is_conditioned
 
-        for k, v in self.model.all_named_rvs():
+        self.vits = {}
+        #### Look at all unconditioned random variables
+        for k, v in self.model.named_uncond_rvs():
             vit = v.vi()
-            self.vits.append(vit)
-            self.add_module("_"+k.replace(".", "_"), vit)
+            self.vits[k] = vit
+            setattr(self, "_"+k.replace(".", "_"), vit)
 
         self.opt = opt(self.parameters(), **opt_kwargs)
 
     def fit_one_step(self):
         self.zero_grad()
-        kl = self.rsample_kl()
-        elbo = self.model().sum() - kl
-        loss = -elbo
-        loss.backward()
+        elbo = self.elbo()
+        (-elbo).backward()
         self.opt.step()
         return elbo
 
@@ -65,11 +65,13 @@ class VI(nn.Module):
                 print(elbo.item())
 
         #### Detach rv._value from VI computation.
-        for vit in self.vits:
+        for vit in self.vits.values():
             vit.rv._value.detach_()
 
-    def rsample_kl(self):
+    def elbo(self):
         total = 0.
-        for vit in self.vits:
-            total += vit.rsample_kl()
+        for vit in self.vits.values():
+            total -= vit.rsample_kl()
+        for v in self.model.cond_rvs():
+            total += v.log_prior().sum()
         return total
