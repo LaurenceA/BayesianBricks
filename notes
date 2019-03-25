@@ -1,24 +1,20 @@
 TODOs:
-  Never resampled conditioned variables!
-  Include self in self.rvs
-  Unify BrRV and Model?
+  Refactor Model/Deps/RVs
+  Joint distribution as a container for multiple conditioned variables.
 
-  Dependencies:
-    (In)dependencies between variables MUST be encoded by the object graph.
-      So, forward can never take external inputs.
-      But can have same RV in two different places in tree.
-      TransformedRV
-    (In)dependencies across variables MUST be encoded by the object graph.
+  Exploiting dependency structure across variables in MCMC:
+    Metropolis/HMC updates: take the smallest subtree with:
+      all sampled rvs
+      is an rv
+    Could find this manually, but it should be possible to infer from the tree.
 
-  Automatic parallelisation:
+  Exploiting dependency structure within variables in MCMC:
     Choose variables to sample together.
     Dimensions are independent if:
       Independent prior
       Data, and all RV's have the same shape along those dimensions.
       Only pointwise transformations between all RV's and data.
   
-  Rename:
-    log_prior -> log_prob
   Test:
     independent accept/reject steps
     BrRV
@@ -27,12 +23,7 @@ TODOs:
     avoid RV log-probability ratios using something like Langevin/single-step HMC
   VI:
     low-rank mass matrix 
-  Unify:
-    observations and non-reparameterised RV
   Docs
-
-
-
   examples:
     neural firing
     calcium? (Exponential + threshold).

@@ -29,7 +29,7 @@ class NormalVI(nn.Module):
         scale = (0.5*log_var).exp()
         self.rv._value = self.mean + scale * z
 
-        logp = self.rv.log_prior().sum()
+        logp = self.rv.log_prob().sum()
         logq = - 0.5 * (z**2 + log_var).sum()
         return logq - logp
 
@@ -46,7 +46,7 @@ class VI(nn.Module):
         #### Look at all unconditioned random variables
         for k, v in self.model.named_uncond_rvs():
             vit = v.vi()
-            self.vits[k] = vit
+            self.vits[v] = vit
             setattr(self, "_"+k.replace(".", "_"), vit)
 
         self.opt = opt(self.parameters(), **opt_kwargs)
@@ -73,5 +73,8 @@ class VI(nn.Module):
         for vit in self.vits.values():
             total -= vit.rsample_kl()
         for v in self.model.cond_rvs():
-            total += v.log_prior().sum()
+            total += v.log_prob().sum()
         return total
+
+    def __getitem__(self, key):
+        return self.vits[key]

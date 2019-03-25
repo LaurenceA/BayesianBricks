@@ -6,6 +6,11 @@
 Welcome to BayesianBricks's documentation!
 ==========================================
 
+Principles
+=========
+
+Dependencies are encoded by the object graph.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

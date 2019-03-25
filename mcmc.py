@@ -16,6 +16,7 @@ class MCMC():
         self.rvs = list(rvs)
         for rv in self.rvs:
             assert isinstance(rv, AbstractRV)
+            assert not rv.is_conditioned
 
         self.ind_shape = ind_shape
         self.ind_dims = [i for i in range(-len(ind_shape), 0) if 1 < ind_shape[i]] 
@@ -53,11 +54,11 @@ class MCMC():
     def log_prob(self, model):
         total = self.sum_non_ind(model())
         for rv in self.rvs:
-            total = total + self.sum_non_ind(rv.log_prior())
+            total = total + self.sum_non_ind(rv.log_prob())
 
         for br_rv in model.branch_rvs():
             if br_rv not in self.rvs:
-                total = total + self.sum_non_ind(br_rv.log_prior())
+                total = total + self.sum_non_ind(br_rv.log_prob())
         return total
 
     def sum_non_ind(self, x):
@@ -84,11 +85,10 @@ class Chain():
     """
     Manages the recording of MCMC samples
     """
-    def __init__(self, model, kernels):
+    def __init__(self, model, kernels, chain_length, warmup=0):
         self.model = model
         self.kernels = kernels
 
-    def run(self, chain_length, warmup=0):
         #### warmup
         for i in range(warmup):
             for kernel in self.kernels:
@@ -96,10 +96,10 @@ class Chain():
 
         #### initialize result dict
         self.model() 
-        result_dict = {}
-        for k, m in self.model.named_modules():
+        self.samples = {}
+        for m in self.model.modules():
             if hasattr(m, "_value"):
-                result_dict[k] = t.zeros(t.Size([chain_length]) + m._value.size(), device="cpu")
+                self.samples[m] = t.zeros(t.Size([chain_length]) + m._value.size(), device="cpu")
 
         #### run chain
         for i in range(chain_length):
@@ -107,8 +107,9 @@ class Chain():
                 kernel.step(self.model)
 
             #Record current sample
-            for k, m in self.model.named_modules():
+            for m in self.model.modules():
                 if hasattr(m, "_value"):
-                    result_dict[k][i,...] = m._value
+                    self.samples[m][i,...] = m._value
 
-        return result_dict
+    def __getitem__(self, key):
+        return self.samples[key]

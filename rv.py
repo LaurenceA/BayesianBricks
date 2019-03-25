@@ -55,11 +55,9 @@ class Deps(nn.Module):
 
     def dump(self):
         result = {}
-        for k, v in self.named_modules():
-            if hasattr(v, "_value"):
-                result[k] = v._value
-            else:
-                result[k] = None
+        for m in self.modules():
+            if hasattr(m, "_value"):
+                result[m] = m._value
         return result
 
 class AbstractRV(nn.Module):
@@ -81,15 +79,16 @@ class AbstractRV(nn.Module):
         if not self.sampled_bit:
             for mod in self.children():
                 mod._sample()
-            self._value = self.dist().sample()
-            assert self.size == self._value.size()
             self.sampled_bit = True
+            if not self.is_conditioned:
+                self._value = self.dist().sample()
+                assert self.size == self._value.size()
 
     def sample(self):
         self.reset_sampled_bit()
         self._sample()
 
-    def log_prior(self):
+    def log_prob(self):
         return self.dist().log_prob(self._value)
 
     def forward(self):
@@ -129,15 +128,6 @@ class BrRV(AbstractRV, Deps):
             assert self.size == obs.size()
             self._value = obs
         self.is_conditioned = True
-
-    def dump(self):
-        result = {}
-        for k, v in self.named_modules():
-            if hasattr(v, "_value"):
-                result[k] = v._value
-            else:
-                result[k] = None
-        return result
 
 class LeafRV(AbstractRV):
     def dist(self):

@@ -10,19 +10,14 @@ class HMCTensor():
         self.p = t.zeros(rv.size)
 
         if vi is not None:
-            for vit in vi.vits:
-                if rv is vit.rv:
-                    self.inv_mass = vit.variance()
-                    self.sqrt_mass = vit.inv_std()
-                    break
-
-        if not hasattr(self, "inv_mass"):
+            self.inv_mass = vi[rv].variance()
+            self.sqrt_mass = vi[rv].inv_std()
+        else:
             self.inv_mass = t.ones(())
             self.sqrt_mass = t.ones(())
 
     def momentum_step(self, rate):
         self.p.add_( rate, self.rv._value.grad)
-        #self.p.add_(-rate, self.rv._value.data)
 
     def position_step(self, rate):
         self.rv._value.data.addcmul_(rate, self.inv_mass, self.p)
