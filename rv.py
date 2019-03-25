@@ -161,47 +161,6 @@ class Model(Deps):
         for mod in self.children():
             mod.reset_sampled_bit()
 
-#class Model(nn.Module):
-#    """
-#    Overload: 
-#    __init__ 
-#    __call__
-#    """
-#    #def rvs(self):
-#    #    return (mod for mod in self.modules() if isinstance(mod, RV))
-#    
-#    def all_rvs(self):
-#        return (mod for mod in self.modules() if isinstance(mod, AbstractRV))
-#
-#    def branch_rvs(self):
-#        return (mod for mod in self.modules() if isinstance(mod, BrRV))
-#
-#    def leaf_rvs(self):
-#        return (mod for mod in self.modules() if isinstance(mod, LeaffRV))
-#
-#    def all_named_rvs(self):
-#        return ((k, v) for k, v in self.named_modules() if isinstance(v, AbstractRV))
-#
-#    def models(self):
-#        return (mod for mod in self.modules() if isinstance(mod, Model))
-#
-#    def _sample(self):
-#        for mod in self.children():
-#            mod._sample()
-#
-#    def reset_sampled_bit(self):
-#        for mod in self.children():
-#            mod.reset_sampled_bit()
-#
-#    def dump(self):
-#        result = {}
-#        for k, v in self.named_modules():
-#            if hasattr(v, "_value"):
-#                result[k] = v._value
-#            else:
-#                result[k] = None
-#        return result
-
 
 def pt(fn):
     def inner(*args, **kwargs):

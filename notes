@@ -1,19 +1,23 @@
 TODOs:
-  Refactor Model/Deps/RVs
-  Joint distribution as a container for multiple conditioned variables.
-
-  Exploiting dependency structure across variables in MCMC:
-    Metropolis/HMC updates: take the smallest subtree with:
-      all sampled rvs
-      is an rv
-    Could find this manually, but it should be possible to infer from the tree.
-
-  Exploiting dependency structure within variables in MCMC:
-    Choose variables to sample together.
-    Dimensions are independent if:
-      Independent prior
+  when you initialize an MCMC kernel:
+    consider inter-object dependencies:
+      see whether there's a lower-level subtree that contains all refs to the rvs
+    consider inter-dimension dependencies: dimensions independent if:
+      Independent prior over all sampled rvs
       Data, and all RV's have the same shape along those dimensions.
       Only pointwise transformations between all RV's and data.
+
+      each model has a field, dep_dims, describing the dimensions it makes dependent.
+      start at data, go backwards through the tree collecting dep_dims:
+        if there's none of our rv's on a branch, return the empty list
+        if there's a non-sampled BrRV, stop (and don't collect dims)
+      any remaining dims should be independent.  check:
+        data and rv's have same shape along those dimensions
+
+  check whether everything is refreshed as it should be!
+
+  Refactor Model/Deps/RVs
+  Joint distribution as a container for multiple conditioned variables.
   
   Test:
     independent accept/reject steps
@@ -25,6 +29,7 @@ TODOs:
     low-rank mass matrix 
   Docs
   examples:
+    confidence
     neural firing
     calcium? (Exponential + threshold).
     flips in 

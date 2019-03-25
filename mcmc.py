@@ -12,7 +12,8 @@ class MCMC():
     Critical technical detail:
     the ind_dims, and log_like must be compatible with all log_priors.
     """
-    def __init__(self, rvs=None, ind_shape=(), vi=None):
+    def __init__(self, model, rvs, ind_shape=(), vi=None):
+        self.model = model
         self.rvs = list(rvs)
         for rv in self.rvs:
             assert isinstance(rv, AbstractRV)
@@ -26,17 +27,17 @@ class MCMC():
     def init_proposal(self, vi):
         raise NotImplementedError()
 
-    def proposal(self, model):
+    def proposal(self):
         raise NotImplementedError()
 
-    def step(self, model):
+    def step(self):
         xs_prev = [rv._value.clone() for rv in self.rvs]
-        lp_prev = self.log_prob(model)
+        lp_prev = self.log_prob()
 
-        lp_mod = self.proposal(model)
+        lp_mod = self.proposal()
 
         xs_next = [rv._value.clone() for rv in self.rvs]
-        lp_next = self.log_prob(model)
+        lp_next = self.log_prob()
         
         lp_diff = lp_next - lp_prev + lp_mod
         accept_prob = lp_diff.exp()
@@ -51,12 +52,12 @@ class MCMC():
             assert new_value.size() == self.rvs[i].size
             self.rvs[i]._value = new_value
 
-    def log_prob(self, model):
-        total = self.sum_non_ind(model())
+    def log_prob(self):
+        total = self.sum_non_ind(self.model())
         for rv in self.rvs:
             total = total + self.sum_non_ind(rv.log_prob())
 
-        for br_rv in model.branch_rvs():
+        for br_rv in self.model.branch_rvs():
             if br_rv not in self.rvs:
                 total = total + self.sum_non_ind(br_rv.log_prob())
         return total
@@ -85,31 +86,31 @@ class Chain():
     """
     Manages the recording of MCMC samples
     """
-    def __init__(self, model, kernels, chain_length, warmup=0):
-        self.model = model
+    def __init__(self, kernels, chain_length, warmup=1, rvs=None):
+        if rvs is None:
+            self.rvs = set.union(*(set(k.model.modules()) for k in kernels))
         self.kernels = kernels
 
         #### warmup
         for i in range(warmup):
             for kernel in self.kernels:
-                kernel.step(self.model)
+                kernel.step()
 
         #### initialize result dict
-        self.model() 
         self.samples = {}
-        for m in self.model.modules():
-            if hasattr(m, "_value"):
-                self.samples[m] = t.zeros(t.Size([chain_length]) + m._value.size(), device="cpu")
+        for rv in self.rvs:
+            if hasattr(rv, "_value"):
+                self.samples[rv] = t.zeros(t.Size([chain_length]) + rv._value.size(), device="cpu")
 
         #### run chain
         for i in range(chain_length):
             for kernel in self.kernels:
-                kernel.step(self.model)
+                kernel.step()
 
             #Record current sample
-            for m in self.model.modules():
-                if hasattr(m, "_value"):
-                    self.samples[m][i,...] = m._value
+            for rv in self.rvs:
+                if hasattr(rv, "_value"):
+                    self.samples[rv][i,...] = rv._value
 
     def __getitem__(self, key):
         return self.samples[key]
